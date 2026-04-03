@@ -18,8 +18,8 @@ from env.models import (
     ScoreDimensionAction,
 )
 from env.profile_factory import ProfileFactory
-from env.rewards import compute_reward
-from env.fairness import fairness_penalty
+from env.rewards import RewardCalculator, compute_reward
+from env.fairness import FairnessChecker, fairness_penalty
 
 __all__ = [
     "RecruitmentEnvironment",
@@ -38,6 +38,8 @@ __all__ = [
     "Reward",
     "ScoreDimensionAction",
     "ProfileFactory",
+    "RewardCalculator",
     "compute_reward",
+    "FairnessChecker",
     "fairness_penalty",
 ]
