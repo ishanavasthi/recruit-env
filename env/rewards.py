@@ -5,10 +5,10 @@ All graders return float in [0.0, 1.0] and are fully deterministic.
 
 from __future__ import annotations
 
-from env.models import Reward, State
+from env.models import EpisodeState, Reward
 
 
-def compute_reward(state: State) -> Reward:
+def compute_reward(state: EpisodeState) -> Reward:
     """Compute the overall reward for the current episode state.
 
     Compares agent decisions against ground-truth labels embedded at
@@ -18,11 +18,11 @@ def compute_reward(state: State) -> Reward:
     raise NotImplementedError
 
 
-def accuracy_score(state: State) -> float:
+def accuracy_score(state: EpisodeState) -> float:
     """Fraction of decisions matching ground truth.  Returns float in [0, 1]."""
     raise NotImplementedError
 
 
-def efficiency_score(state: State) -> float:
+def efficiency_score(state: EpisodeState) -> float:
     """Reward for using fewer steps.  Returns float in [0, 1]."""
     raise NotImplementedError

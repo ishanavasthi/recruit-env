@@ -3,7 +3,7 @@
 import pytest
 
 from env.environment import RecruitmentEnvironment
-from env.models import Action, ActionType
+from env.models import ReadResumeSectionAction, CheckPlatformAction, MakeDecisionAction
 
 
 class TestReset:

@@ -8,7 +8,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from env.environment import RecruitmentEnvironment
-from env.models import Action, Observation, Reward, State
+from env.models import Action, EpisodeState, Observation, Reward
 
 app = FastAPI(
     title="RecruitEnv",
@@ -38,7 +38,7 @@ def step(action: Action) -> dict:
 
 
 @app.get("/state")
-def get_state() -> State:
+def get_state() -> EpisodeState:
     """Return full internal environment state."""
     raise NotImplementedError
 

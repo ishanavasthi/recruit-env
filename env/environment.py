@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from env.models import Action, Observation, Reward, State
+from env.models import Action, EpisodeState, Observation, Reward
 
 
 class RecruitmentEnvironment:
@@ -12,7 +12,7 @@ class RecruitmentEnvironment:
     """
 
     def __init__(self) -> None:
-        self._state: State | None = None
+        self._state: EpisodeState | None = None
 
     def reset(self, task_id: str, seed: int = 42) -> Observation:
         """Reset the environment for a new episode.
@@ -33,6 +33,6 @@ class RecruitmentEnvironment:
         """
         raise NotImplementedError
 
-    def state(self) -> State:
+    def state(self) -> EpisodeState:
         """Return the full internal state for serialisation / grading."""
         raise NotImplementedError

@@ -5,7 +5,9 @@ Uses numpy seeded RNG for full determinism.  NO live HTTP calls.
 
 from __future__ import annotations
 
-from env.models import CandidateProfile, JobDescription, Tier
+from typing import Literal
+
+from env.models import CandidateProfile, JobDescription
 
 
 class ProfileFactory:
@@ -30,6 +32,6 @@ class ProfileFactory:
         """
         raise NotImplementedError
 
-    def _random_tier(self) -> Tier:
+    def _random_tier(self) -> Literal["junior", "mid", "senior"]:
         """Pick a candidate tier using the seeded RNG."""
         raise NotImplementedError

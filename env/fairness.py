@@ -6,10 +6,10 @@ discourage biased shortlisting patterns.  Deterministic.
 
 from __future__ import annotations
 
-from env.models import State
+from env.models import EpisodeState
 
 
-def fairness_penalty(state: State) -> float:
+def fairness_penalty(state: EpisodeState) -> float:
     """Compute a fairness penalty for the agent's decisions.
 
     Checks whether shortlisting rates are roughly equal across candidate
