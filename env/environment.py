@@ -19,7 +19,12 @@ from env.models import (
 )
 from env.profile_factory import ProfileFactory
 from env.rewards import RewardCalculator
-from tasks import TASK_REGISTRY
+
+
+def _load_task_registry() -> dict:
+    """Lazy import to break the env ↔ tasks circular dependency."""
+    from tasks import TASK_REGISTRY
+    return dict(TASK_REGISTRY)
 
 
 class RecruitmentEnvironment:
@@ -34,7 +39,7 @@ class RecruitmentEnvironment:
         self._factory = ProfileFactory()
         self._reward_calc = RewardCalculator()
         self._fairness = FairnessChecker()
-        self._task_registry = dict(TASK_REGISTRY)
+        self._task_registry = _load_task_registry()
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -58,29 +63,13 @@ class RecruitmentEnvironment:
 
             task = self._task_registry[task_id]
 
-            # Derive label distribution from task config.
-            # select_quota  → shortlist count
-            # remaining     → split roughly between hold and reject
-            shortlist_n = task.select_quota
-            remaining = task.num_candidates - shortlist_n
-            hold_n = remaining // 2
-            reject_n = remaining - hold_n
-            label_distribution = {
-                "shortlist": shortlist_n,
-                "hold": hold_n,
-                "reject": reject_n,
-            }
-
-            # Pick a role type deterministically from the seed so the same
-            # seed always produces the same job description.
-            role_types = ["ml_engineer", "frontend_dev", "backend_dev", "data_scientist"]
-            role_type = role_types[seed % len(role_types)]
-
-            jd = self._factory.generate_job_description(seed=seed, role_type=role_type)
+            jd = self._factory.generate_job_description(
+                seed=seed, role_type=task.role_type,
+            )
             pool = self._factory.generate_pool(
                 seed=seed,
-                count=task.num_candidates,
-                label_distribution=label_distribution,
+                count=task.candidate_count,
+                label_distribution=dict(task.label_distribution),
             )
 
             summary = [{"id": c.id, "name": c.name} for c in pool]
@@ -89,7 +78,7 @@ class RecruitmentEnvironment:
                 task_id=task_id,
                 seed=seed,
                 step_number=0,
-                max_steps=task.step_budget,
+                max_steps=task.max_steps,
                 job_description=jd,
                 candidates=pool,
                 candidates_summary=summary,

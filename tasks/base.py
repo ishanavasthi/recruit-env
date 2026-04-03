@@ -1,23 +1,40 @@
-"""TaskDefinition base class for all RecruitEnv tasks."""
+"""TaskConfig and BaseGrader — shared foundations for all tasks."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Literal
+
+from env.models import EpisodeState, Observation
 
 
-class TaskDefinition(BaseModel):
-    """Base class defining a task (scenario) for the environment.
+@dataclass(frozen=True)
+class TaskConfig:
+    """Immutable configuration for a single task scenario."""
 
-    Each concrete task specifies the number of candidates, step budget,
-    selection quota, and a human-readable description.
+    id: str
+    name: str
+    description: str
+    difficulty: Literal["easy", "medium", "hard"]
+    max_steps: int
+    candidate_count: int
+    label_distribution: dict[str, int] = field(default_factory=dict)
+    success_threshold: float = 0.70
+    role_type: str = "backend_dev"
+
+
+class BaseGrader(ABC):
+    """Abstract grader — every task must provide one.
+
+    ``grade()`` receives the initial observation and the final episode state
+    and returns a score in [0.0, 1.0].
     """
 
-    task_id: str
-    description: str
-    num_candidates: int
-    """How many candidates to generate."""
-    select_quota: int
-    """How many candidates the agent should shortlist."""
-    step_budget: int
-    """Maximum number of steps before the episode is force-ended."""
-    seed: int = 42
+    @abstractmethod
+    def grade(self, initial_obs: Observation, final_state: EpisodeState) -> float:
+        """Return a score in [0.0, 1.0] for the completed episode.
+
+        Must be **deterministic**: same inputs always produce same output.
+        """
+        ...
