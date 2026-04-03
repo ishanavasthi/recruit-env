@@ -1,0 +1,17 @@
+name: RecruitEnv
+version: "0.1.0"
+description: >
+  OpenEnv-compliant RL environment simulating candidate pipeline triage.
+  An agent reviews synthetic candidate profiles and makes shortlisting
+  decisions against a job description.
+
+entry_point: api.main:app
+port: 7860
+
+tasks:
+  - id: easy
+    description: Screen 10 candidates, pick top 3
+  - id: medium
+    description: Conflicting signals evaluation (15 candidates, pick 5)
+  - id: hard
+    description: Batch triage 20 candidates, tight budget (pick 5)
