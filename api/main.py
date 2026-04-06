@@ -4,6 +4,8 @@ Run with: uvicorn api.main:app --host 0.0.0.0 --port 7860 --reload
 """
 
 from __future__ import annotations
+from dotenv import load_dotenv
+load_dotenv()
 
 import asyncio
 import dataclasses

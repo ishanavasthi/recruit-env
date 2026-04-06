@@ -7,8 +7,10 @@ server must be running before you start this script.
 Usage:
     python baseline/run_baseline.py
 """
-
 from __future__ import annotations
+from dotenv import load_dotenv
+load_dotenv()
+
 
 import json
 import os
