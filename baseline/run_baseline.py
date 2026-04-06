@@ -100,9 +100,29 @@ def build_system_prompt(obs: dict) -> str:
         f'3. {{"type": "score_dimension", "candidate_id": "...", "dimension": "technical|experience|growth", "score": 0.0-1.0}}\n'
         f'4. {{"type": "make_decision", "candidate_id": "...", "decision": "shortlist|hold|reject"}}\n'
         f"\n"
-        f"Strategy: gather signals efficiently, then decide. "
-        f"You have limited steps so prioritize wisely.\n"
-        f"Respond with ONLY the JSON action, no explanation."
+        f"STRICT RULES — follow exactly:\n"
+        f"\n"
+        f"SIGNALS GUIDE:\n"
+        f"- GitHub stars > 200 AND LeetCode solved > 250: shortlist\n"
+        f"- GitHub stars < 20 AND LeetCode solved < 100: reject\n"
+        f"- Everything in between: hold\n"
+        f"\n"
+        f"EFFICIENCY RULES:\n"
+        f"- Check MAXIMUM 2 signals per candidate (github + leetcode only)\n"
+        f"- Immediately after 2 checks: make_decision for that candidate\n"
+        f"- Never check resume unless you have 0 other signals\n"
+        f"- Never score_dimension — skip it entirely, go straight to make_decision\n"
+        f"\n"
+        f"DECISION RULES:\n"
+        f"- You MUST make a decision after every 1-2 checks\n"
+        f"- Do NOT shortlist everyone — only top candidates deserve shortlist\n"
+        f"- Reject weak candidates aggressively\n"
+        f"- Hold borderline candidates\n"
+        f"\n"
+        f"ORDER: check_platform github -> check_platform leetcode -> make_decision\n"
+        f"Repeat for each candidate. Never deviate from this order.\n"
+        f"\n"
+        f"Respond with ONLY a single JSON object. No explanation. No markdown."
     )
 
 
@@ -136,42 +156,51 @@ def build_observation_message(obs: dict) -> str:
     )
 
 
-def parse_action(text: str) -> dict | None:
-    """Parse an action JSON from LLM output, stripping markdown fences."""
-    # Strip markdown code fences
-    cleaned = re.sub(r"```(?:json)?\s*", "", text)
-    cleaned = re.sub(r"```", "", cleaned)
-    cleaned = cleaned.strip()
+def extract_action(text: str, fallback_candidate: str) -> dict:
+    """Bulletproof JSON extraction from LLM output.
 
+    Tries: direct parse, markdown-fence stripping, regex extraction.
+    Always returns a valid action dict — never None.
+    """
+    fallback = {
+        "type": "make_decision",
+        "candidate_id": fallback_candidate,
+        "decision": "hold",
+    }
+
+    if not text:
+        return fallback
+
+    # Strip markdown fences
+    text = re.sub(r"```json|```", "", text).strip()
+
+    # Try direct parse
     try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        # Try to find JSON object in the text
-        match = re.search(r"\{[^{}]+\}", cleaned)
-        if match:
-            try:
-                return json.loads(match.group())
-            except json.JSONDecodeError:
-                pass
-    return None
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return parsed
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    # Extract first {...} block
+    match = re.search(r"\{[^{}]+\}", text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    # True fallback
+    return fallback
 
 
-def fallback_action(obs: dict) -> dict:
-    """Return a safe fallback: 'hold' for the first undecided candidate."""
+def _first_undecided(obs: dict) -> str:
+    """Return the candidate_id of the first undecided candidate."""
     decided = set(obs.get("decisions_made", {}).keys())
     for c in obs["candidates_summary"]:
         if c["id"] not in decided:
-            return {
-                "type": "make_decision",
-                "candidate_id": c["id"],
-                "decision": "hold",
-            }
-    # All decided — shouldn't reach here
-    return {
-        "type": "make_decision",
-        "candidate_id": obs["candidates_summary"][0]["id"],
-        "decision": "hold",
-    }
+            return c["id"]
+    return obs["candidates_summary"][0]["id"]
 
 
 # ---------------------------------------------------------------------------
@@ -238,30 +267,38 @@ def run_task(
     # Step 3 — Agent loop
     done = False
     steps_used = 0
+    loop_iter = 0
 
     while not done and steps_used < max_steps:
+        # Reset conversation history every 3 iterations to prevent
+        # context overflow (especially important for hard_task).
+        if loop_iter % 3 == 0:
+            messages = [{"role": "system", "content": system_prompt}]
+        loop_iter += 1
+
         # a. Format observation
         user_msg = build_observation_message(obs)
         messages.append({"role": "user", "content": user_msg})
 
         # b. Call OpenRouter
+        fallback_cid = _first_undecided(obs)
         try:
             completion = client.chat.completions.create(
                 model=MODEL,
                 messages=messages,
-                max_tokens=200,
-                temperature=0.1,
+                max_tokens=150,
+                temperature=0.0,
             )
             action_text = completion.choices[0].message.content or ""
         except Exception as e:
             print(f"  [step {steps_used}] LLM error: {e}")
             action_text = ""
 
-        # c. Parse action
-        action = parse_action(action_text)
-        if action is None:
-            print(f"  [step {steps_used}] Parse failed, using fallback. Raw: {action_text[:80]}")
-            action = fallback_action(obs)
+        # c. Parse action (bulletproof — always returns a valid dict)
+        action = extract_action(action_text, fallback_cid)
+
+        # Log raw LLM output
+        print(f"  [step {steps_used}] Raw LLM output: {action_text[:300]}")
 
         # Append assistant message
         messages.append({"role": "assistant", "content": action_text or json.dumps(action)})
@@ -275,27 +312,29 @@ def run_task(
             detail = e.response.json().get("detail", str(e))
             print(f"  [step {steps_used}] Step error: {detail}")
             # Use fallback and retry
-            action = fallback_action(obs)
+            action = extract_action("", fallback_cid)
             messages[-1] = {"role": "assistant", "content": json.dumps(action)}
             r = http.post(f"{BASE_URL}/step", json=action)
             r.raise_for_status()
             step_result = r.json()
 
         obs = step_result["observation"]
+        reward = step_result["reward"]
         done = step_result["done"]
         steps_used = obs["step_number"]
 
-        # Progress indicator
+        # Verbose per-step logging
         action_type = action.get("type", "?")
         cid = action.get("candidate_id", "?")
-        extra = ""
-        if action_type == "make_decision":
-            extra = f" -> {action.get('decision', '?')}"
-        elif action_type == "check_platform":
-            extra = f" ({action.get('platform', '?')})"
-        elif action_type == "read_resume_section":
-            extra = f" ({action.get('section', '?')})"
-        print(f"  [step {steps_used:2d}/{max_steps}] {action_type} {cid}{extra}")
+        detail = (
+            action.get("section")
+            or action.get("platform")
+            or action.get("dimension")
+            or action.get("decision")
+            or ""
+        )
+        print(f"  [step {steps_used}] Action: {action_type} | Candidate: {cid} | Detail: {detail}")
+        print(f"  [step {steps_used}] Reward: {reward.get('step_reward', 0.0)} | Cumulative: {reward.get('cumulative_reward', 0.0)} | Done: {done}")
 
     # Step 4 — Grade
     r = http.post(f"{BASE_URL}/grader")
@@ -314,9 +353,12 @@ def run_task(
     status = "PASS" if success else "FAIL"
     print(f"\n  Score: {score:.4f} (threshold: {threshold:.2f}) [{status}]")
     print(f"  Steps used: {steps_used}/{max_steps}")
-    correct = breakdown.get("correct", "?")
-    total = breakdown.get("total", "?")
-    print(f"  Correct decisions: {correct}/{total}")
+    correct_count = breakdown.get("correct", "?")
+    total_count = breakdown.get("total", "?")
+    print(f"  Correct decisions: {correct_count}/{total_count}")
+
+    # Step 6 — Per-candidate summary
+    _print_candidate_summary(http, obs, breakdown)
 
     return {
         "score": score,
@@ -324,6 +366,77 @@ def run_task(
         "max_steps": max_steps,
         "breakdown": breakdown,
     }
+
+
+def _print_candidate_summary(
+    http: httpx.Client,
+    final_obs: dict,
+    breakdown: dict[str, Any],
+) -> None:
+    """Print full per-candidate breakdown table."""
+    decisions = breakdown.get("decisions", {})
+    ground_truth = breakdown.get("ground_truth", {})
+    revealed = final_obs.get("revealed_data", {})
+    scores_recorded = final_obs.get("scores_recorded", {})
+
+    if not decisions and not ground_truth:
+        return
+
+    print(f"\n  {'='*115}")
+    print(f"  CANDIDATE BREAKDOWN")
+    print(f"  {'='*115}")
+    print(
+        f"  {'Candidate':<18}"
+        f"{'Signals Checked':<40}"
+        f"{'Dims Scored':<30}"
+        f"{'Decision':<12}"
+        f"{'Truth':<10}"
+        f"{'Match':>5}"
+    )
+    print(f"  {'-'*115}")
+
+    all_cids = sorted(set(list(ground_truth.keys()) + list(decisions.keys())))
+    match_count = 0
+    for cid in all_cids:
+        # Signals gathered
+        cid_data = revealed.get(cid, {})
+        platforms = cid_data.get("platforms", [])
+        sections = cid_data.get("resume_sections", [])
+        signals = []
+        if platforms:
+            signals.extend(platforms)
+        if sections:
+            signals.extend(f"resume:{s}" for s in sections)
+        signals_str = ", ".join(signals) if signals else "(none)"
+
+        # Dimensions scored
+        cid_scores = scores_recorded.get(cid, {})
+        if cid_scores:
+            dims_str = ", ".join(
+                f"{d}={v:.2f}" for d, v in sorted(cid_scores.items())
+            )
+        else:
+            dims_str = "(none)"
+
+        decision = decisions.get(cid, "(undecided)")
+        truth = ground_truth.get(cid, "?")
+        is_match = decision == truth
+        match_str = "Y" if is_match else "N"
+        if is_match:
+            match_count += 1
+
+        print(
+            f"  {cid:<18}"
+            f"{signals_str:<40}"
+            f"{dims_str:<30}"
+            f"{decision:<12}"
+            f"{truth:<10}"
+            f"{match_str:>5}"
+        )
+
+    print(f"  {'-'*115}")
+    print(f"  Total: {match_count}/{len(all_cids)} correct")
+    print(f"  {'='*115}")
 
 
 # ---------------------------------------------------------------------------
