@@ -4,6 +4,7 @@ PROBLEM_STATEMENT.md
 # Python
 env\__pycache__
 __pycache__/
+.pytest_cache/
 *.pyc
 *.pyo
 *.egg-info/
@@ -27,3 +28,4 @@ Thumbs.db
 Desktop.ini
 
 node_modules
+logs/
