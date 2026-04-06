@@ -10,6 +10,9 @@ __pycache__/
 dist/
 build/
 
+# Generated outputs
+baseline/baseline_scores.json
+
 # Environment
 .env
 .venv/
