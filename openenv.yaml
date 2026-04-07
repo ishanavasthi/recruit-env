@@ -7,6 +7,7 @@ description: >
 
 entry_point: api.main:app
 port: 7860
+space_url: "https://huggingface.co/spaces/heyavasthi/recruitenv"
 
 tasks:
   - id: easy
