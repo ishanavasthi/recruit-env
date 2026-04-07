@@ -1,7 +1,7 @@
-"""LLM-powered baseline agent for RecruitEnv (via OpenRouter).
+"""LLM-powered baseline agent for RecruitEnv.
 
-Uses the OpenAI Python SDK pointed at OpenRouter's API endpoint.
-Requires OPENROUTER_API_KEY in the environment.  The RecruitEnv
+Uses the OpenAI Python SDK with the official OpenAI API.
+Requires OPENAI_API_KEY in the environment.  The RecruitEnv
 server must be running before you start this script.
 
 Usage:
@@ -28,7 +28,7 @@ from openai import OpenAI
 # ---------------------------------------------------------------------------
 
 BASE_URL = os.getenv("RECRUITENV_URL", "http://localhost:7860")
-MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-exp:free")
+MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 SEED = 42
 
 TASKS = [
@@ -209,17 +209,13 @@ def _first_undecided(obs: dict) -> str:
 
 
 def check_api_key() -> OpenAI:
-    """Verify OPENROUTER_API_KEY is set and return an OpenAI client."""
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    """Verify OPENAI_API_KEY is set and return an OpenAI client."""
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        print("ERROR: OPENROUTER_API_KEY environment variable is not set.")
-        print("Get a free key at https://openrouter.ai/keys")
+        print("ERROR: OPENAI_API_KEY environment variable not set")
         sys.exit(1)
 
-    return OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
-    )
+    return OpenAI(api_key=api_key)
 
 
 def check_server() -> None:
