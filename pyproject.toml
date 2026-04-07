@@ -15,11 +15,15 @@ dependencies = [
     "openai",
     "python-dotenv",
     "httpx",
+    "openenv-core>=0.2.0",
 ]
+
+[project.scripts]
+server = "server.app:main"
 
 [project.optional-dependencies]
 dev = ["pytest", "httpx"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["env*", "api*", "tasks*", "baseline*"]
+include = ["env*", "api*", "tasks*", "baseline*", "server*"]
