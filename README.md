@@ -382,11 +382,19 @@ curl http://localhost:7860/baseline
 
 ```
 recruitenv/
+├── __init__.py                # Package root
+├── client.py                  # OpenEnv client: RecruitEnvClient with reset(), step(), state()
+├── pyproject.toml             # Project metadata, dependencies, entry points
+├── openenv.yaml               # OpenEnv specification
 ├── Dockerfile                 # Python 3.11-slim, non-root user, healthcheck
 ├── docker-compose.yml         # Single service, port 7860
-├── openenv.yaml               # OpenEnv specification
 ├── requirements.txt           # fastapi, uvicorn, pydantic, numpy, openai, pytest, httpx
 ├── README.md
+│
+├── server/                    # OpenEnv standard entry point
+│   ├── __init__.py
+│   ├── app.py                 # uvicorn launcher (openenv runs `uv run server`)
+│   └── models.py              # Re-exports env.models for openenv compatibility
 │
 ├── env/                       # Core environment (zero external dependencies)
 │   ├── __init__.py            # Re-exports all public symbols
