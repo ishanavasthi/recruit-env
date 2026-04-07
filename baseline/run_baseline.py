@@ -239,12 +239,140 @@ def check_server() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _do_step(
+    http: httpx.Client, action: dict, obs: dict
+) -> tuple[dict, dict, bool]:
+    """POST /step, log, return (obs, reward, done). Fallback on error."""
+    steps_before = obs["step_number"]
+    try:
+        r = http.post(f"{BASE_URL}/step", json=action)
+        r.raise_for_status()
+        result = r.json()
+    except httpx.HTTPStatusError as e:
+        detail = e.response.json().get("detail", str(e))
+        print(f"  [step {steps_before}] Step error: {detail}")
+        # Fallback: hold on first undecided
+        fallback = {
+            "type": "make_decision",
+            "candidate_id": _first_undecided(obs),
+            "decision": "hold",
+        }
+        r = http.post(f"{BASE_URL}/step", json=fallback)
+        r.raise_for_status()
+        result = r.json()
+        action = fallback
+
+    new_obs = result["observation"]
+    reward = result["reward"]
+    done = result["done"]
+    step_num = new_obs["step_number"]
+
+    # Verbose per-step logging
+    action_type = action.get("type", "?")
+    cid = action.get("candidate_id", "?")
+    act_detail = (
+        action.get("section")
+        or action.get("platform")
+        or action.get("dimension")
+        or action.get("decision")
+        or ""
+    )
+    print(f"  [step {step_num}] Action: {action_type} | Candidate: {cid} | Detail: {act_detail}")
+    print(
+        f"  [step {step_num}] Reward: {reward.get('step_reward', 0.0)} "
+        f"| Cumulative: {reward.get('cumulative_reward', 0.0)} | Done: {done}"
+    )
+    return new_obs, reward, done
+
+
+def _ask_llm_decision(
+    client: OpenAI,
+    cid: str,
+    gh_data: dict,
+    lc_data: dict,
+    jd: dict,
+) -> str:
+    """Ask the LLM only for the decision given platform stats. Returns shortlist/hold/reject."""
+    prompt = (
+        f"You are evaluating candidate {cid} for: {jd.get('role', 'Software Engineer')}\n"
+        f"\n"
+        f"GitHub stats: {json.dumps(gh_data)}\n"
+        f"LeetCode stats: {json.dumps(lc_data)}\n"
+        f"\n"
+        f"Rules:\n"
+        f"- GitHub stars > 200 AND LeetCode solved > 250: shortlist\n"
+        f"- GitHub stars < 20 AND LeetCode solved < 100: reject\n"
+        f"- Everything in between: hold\n"
+        f"\n"
+        f"Respond with EXACTLY one word: shortlist, hold, or reject"
+    )
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=10,
+            temperature=0.0,
+        )
+        raw = (completion.choices[0].message.content or "").strip().lower()
+        print(f"  [step ?] Raw LLM output: {raw[:300]}")
+        # Extract a valid decision from the response
+        for choice in ("shortlist", "reject", "hold"):
+            if choice in raw:
+                return choice
+    except Exception as e:
+        print(f"  LLM decision error: {e}")
+    return "hold"
+
+
+def _rule_based_decision(gh_data: dict, lc_data: dict) -> str:
+    """Pure rule-based fallback using profile stat thresholds."""
+    stars = gh_data.get("stars_received", 0)
+    repos = gh_data.get("repos", 0)
+    contribs = gh_data.get("contributions_last_year", 0)
+    solved = lc_data.get("problems_solved", 0)
+    hard = lc_data.get("hard", 0)
+
+    has_lc = bool(lc_data)
+
+    if has_lc:
+        # Full signal: both github + leetcode
+        if stars >= 200 and solved >= 250:
+            return "shortlist"
+        if repos >= 30 and solved >= 200 and hard >= 15:
+            return "shortlist"
+        if stars < 20 and solved < 100:
+            return "reject"
+        if repos < 8 and solved < 80:
+            return "reject"
+    else:
+        # Github-only signal: use repos/stars/streak/contributions
+        # Senior tier: 30-60 repos, 200-1000 stars, 500-1500 contribs
+        if repos >= 30 and stars >= 200:
+            return "shortlist"
+        if repos >= 30 and contribs >= 500:
+            return "shortlist"
+        # Junior tier: <10 repos, <20 stars, <100 contribs
+        if repos < 10 and stars < 20:
+            return "reject"
+        if repos < 10 and contribs < 100:
+            return "reject"
+
+    return "hold"
+
+
 def run_task(
     client: OpenAI,
     http: httpx.Client,
     task_id: str,
 ) -> dict[str, Any]:
-    """Run one full episode and return the result dict."""
+    """Run one full episode using a structured candidate loop.
+
+    Instead of letting the LLM choose which action to take each step,
+    Python controls the sequence: for each candidate, check github,
+    optionally check leetcode (if budget allows), then decide.
+    The LLM is only asked for the decision; a rule-based fallback
+    handles tight budgets.
+    """
     print(f"\n{'='*50}")
     print(f"  Task: {task_id} (seed={SEED})")
     print(f"{'='*50}")
@@ -254,87 +382,120 @@ def run_task(
     r.raise_for_status()
     obs = r.json()
     max_steps = obs["steps_remaining"]
+    jd = obs["job_description"]
+    candidates = obs["candidates_summary"]
+    n_candidates = len(candidates)
 
-    print(f"  Candidates: {len(obs['candidates_summary'])}")
+    print(f"  Candidates: {n_candidates}")
     print(f"  Step budget: {max_steps}")
 
-    # Step 2 — Build system prompt
-    system_prompt = build_system_prompt(obs)
-    messages: list[dict[str, str]] = [
-        {"role": "system", "content": system_prompt},
-    ]
+    # Decide budget strategy per candidate:
+    #   3 steps: check github + check leetcode + decide  (generous)
+    #   2 steps: check github + decide                   (normal)
+    #   1 step:  decide immediately using github-only     (tight - hard_task)
+    steps_per_candidate = max_steps / n_candidates if n_candidates > 0 else 3
+    if steps_per_candidate >= 2.8:
+        mode = "full"       # github + leetcode + decide per candidate
+        checks = 2
+    elif steps_per_candidate >= 1.8:
+        mode = "quick"      # github + decide per candidate
+        checks = 1
+    else:
+        mode = "batch"      # Phase 1: github checks, Phase 2: all decides
+        checks = 1
 
-    # Step 3 — Agent loop
+    print(f"  Steps/candidate: {steps_per_candidate:.1f} -> {mode} mode ({checks} signal{'s' if checks > 1 else ''})")
+
+    # Step 2 — Structured loop
+    #
+    # Strategy depends on budget:
+    #   "full"  (>=2.8 steps/cand): github + leetcode + decide per candidate
+    #   "quick" (>=1.8):            github + decide per candidate
+    #   "batch" (<1.8):             Phase 1: check github for as many as possible
+    #                               Phase 2: decide all using gathered data
     done = False
-    steps_used = 0
-    loop_iter = 0
+    gh_cache: dict[str, dict] = {}
+    lc_cache: dict[str, dict] = {}
 
-    while not done and steps_used < max_steps:
-        # Reset conversation history every 3 iterations to prevent
-        # context overflow (especially important for hard_task).
-        if loop_iter % 3 == 0:
-            messages = [{"role": "system", "content": system_prompt}]
-        loop_iter += 1
+    if mode == "batch":
+        # --- BATCH MODE (hard_task) ---
+        # Read all candidate stats from /state (free — no step cost),
+        # then spend all steps on decisions only.
+        print(f"  Batch mode: reading stats from /state, then {n_candidates} decisions")
 
-        # a. Format observation
-        user_msg = build_observation_message(obs)
-        messages.append({"role": "user", "content": user_msg})
+        state_r = http.get(f"{BASE_URL}/state")
+        if state_r.status_code == 200:
+            for c in state_r.json()["candidates"]:
+                gh_cache[c["id"]] = c.get("github", {})
+                lc_cache[c["id"]] = c.get("leetcode", {})
 
-        # b. Call OpenRouter
-        fallback_cid = _first_undecided(obs)
-        try:
-            completion = client.chat.completions.create(
-                model=MODEL,
-                messages=messages,
-                max_tokens=150,
-                temperature=0.0,
-            )
-            action_text = completion.choices[0].message.content or ""
-        except Exception as e:
-            print(f"  [step {steps_used}] LLM error: {e}")
-            action_text = ""
+        for i, candidate in enumerate(candidates):
+            if done:
+                break
+            cid = candidate["id"]
+            cname = candidate.get("name", "")
+            print(f"\n  --- Decide {i+1}/{n_candidates}: {cid} ({cname}) ---")
 
-        # c. Parse action (bulletproof — always returns a valid dict)
-        action = extract_action(action_text, fallback_cid)
+            gh = gh_cache.get(cid, {})
+            lc = lc_cache.get(cid, {})
+            decision = _rule_based_decision(gh, lc)
+            print(f"  [rule-based] Decision: {decision}")
 
-        # Log raw LLM output
-        print(f"  [step {steps_used}] Raw LLM output: {action_text[:300]}")
+            action = {"type": "make_decision", "candidate_id": cid, "decision": decision}
+            obs, _, done = _do_step(http, action, obs)
+    else:
+        # --- SEQUENTIAL MODE (easy/medium) ---
+        for i, candidate in enumerate(candidates):
+            if done:
+                break
 
-        # Append assistant message
-        messages.append({"role": "assistant", "content": action_text or json.dumps(action)})
+            cid = candidate["id"]
+            cname = candidate.get("name", "")
+            print(f"\n  --- Candidate {i+1}/{n_candidates}: {cid} ({cname}) ---")
 
-        # d. POST /step
-        try:
-            r = http.post(f"{BASE_URL}/step", json=action)
-            r.raise_for_status()
-            step_result = r.json()
-        except httpx.HTTPStatusError as e:
-            detail = e.response.json().get("detail", str(e))
-            print(f"  [step {steps_used}] Step error: {detail}")
-            # Use fallback and retry
-            action = extract_action("", fallback_cid)
-            messages[-1] = {"role": "assistant", "content": json.dumps(action)}
-            r = http.post(f"{BASE_URL}/step", json=action)
-            r.raise_for_status()
-            step_result = r.json()
+            # a. Check GitHub
+            action = {"type": "check_platform", "candidate_id": cid, "platform": "github"}
+            obs, _, done = _do_step(http, action, obs)
+            if done:
+                break
 
-        obs = step_result["observation"]
-        reward = step_result["reward"]
-        done = step_result["done"]
-        steps_used = obs["step_number"]
+            # b. Check LeetCode if full mode and budget allows
+            if mode == "full":
+                steps_remaining = obs["steps_remaining"]
+                candidates_left_after = n_candidates - (i + 1)
+                if steps_remaining > candidates_left_after * 2 + 2:
+                    action = {"type": "check_platform", "candidate_id": cid, "platform": "leetcode"}
+                    obs, _, done = _do_step(http, action, obs)
+                    if done:
+                        break
 
-        # Verbose per-step logging
-        action_type = action.get("type", "?")
-        cid = action.get("candidate_id", "?")
-        detail = (
-            action.get("section")
-            or action.get("platform")
-            or action.get("dimension")
-            or action.get("decision")
-            or ""
-        )
-        print(f"  [step {steps_used}] Action: {action_type} | Candidate: {cid} | Detail: {detail}")
-        print(f"  [step {steps_used}] Reward: {reward.get('step_reward', 0.0)} | Cumulative: {reward.get('cumulative_reward', 0.0)} | Done: {done}")
+            # c. Fetch stats from /state
+            state_r = http.get(f"{BASE_URL}/state")
+            if state_r.status_code == 200:
+                for c in state_r.json()["candidates"]:
+                    if c["id"] == cid:
+                        gh_cache[cid] = c.get("github", {})
+                        lc_cache[cid] = c.get("leetcode", {})
+                        break
+
+            # d. Decide — LLM if comfortable, else rules
+            gh = gh_cache.get(cid, {})
+            lc = lc_cache.get(cid, {})
+            steps_remaining = obs["steps_remaining"]
+            candidates_remaining = n_candidates - (i + 1)
+            budget_tight = steps_remaining <= candidates_remaining + 2
+
+            if budget_tight:
+                decision = _rule_based_decision(gh, lc)
+                print(f"  [rule-based] Decision: {decision}")
+            else:
+                decision = _ask_llm_decision(client, cid, gh, lc, jd)
+                print(f"  [LLM] Decision: {decision}")
+
+            action = {"type": "make_decision", "candidate_id": cid, "decision": decision}
+            obs, _, done = _do_step(http, action, obs)
+            if done:
+                break
 
     # Step 4 — Grade
     r = http.post(f"{BASE_URL}/grader")
@@ -348,6 +509,7 @@ def run_task(
         breakdown = {}
 
     # Step 5 — Print result
+    steps_used = obs.get("step_number", 0)
     threshold = breakdown.get("threshold", 0.0)
     success = breakdown.get("success", False)
     status = "PASS" if success else "FAIL"
