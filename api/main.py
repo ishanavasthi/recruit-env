@@ -165,8 +165,10 @@ async def health() -> HealthResponse:
 
 
 @app.post("/reset", response_model=Observation)
-async def reset(body: ResetRequest) -> Observation:
+async def reset(body: ResetRequest | None = None) -> Observation:
     """Reset the environment and return the initial observation."""
+    if body is None:
+        body = ResetRequest()
     async with _lock:
         try:
             obs = _env.reset(body.task_id, body.seed)
