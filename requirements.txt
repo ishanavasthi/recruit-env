@@ -6,3 +6,4 @@ openai
 pytest
 httpx
 python-dotenv
+openenv-core
