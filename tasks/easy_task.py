@@ -68,4 +68,4 @@ class EasyGrader(BaseGrader):
         bonus = 0.2 if agent_shortlist_ids == gt_shortlist_ids else 0.0
 
         raw = base_score + bonus
-        return max(0.0, min(1.0, raw))
+        return max(0.001, min(0.999, raw))

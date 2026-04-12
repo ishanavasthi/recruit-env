@@ -78,4 +78,4 @@ class HardGrader(BaseGrader):
         efficiency_bonus = (steps_saved / max_steps) * 0.1 if max_steps > 0 else 0.0
 
         raw = f1 + efficiency_bonus
-        return max(0.0, min(1.0, raw))
+        return max(0.001, min(0.999, raw))

@@ -81,4 +81,4 @@ class MediumGrader(BaseGrader):
                 adjustment -= 0.15  # penalty: hasty
 
         raw = base_score + adjustment
-        return max(0.0, min(1.0, raw))
+        return max(0.001, min(0.999, raw))
