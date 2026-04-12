@@ -5,7 +5,7 @@ MANDATORY env vars:
     API_BASE_URL       The API endpoint for the LLM.
     MODEL_NAME         The model identifier to use for inference.
     HF_TOKEN           Your Hugging Face / API key.
-    LOCAL_IMAGE_NAME   Docker image name (optional, for from_docker_image()).
+    LOCAL_IMAGE_NAME   Docker image name (optional).
 """
 
 import asyncio
@@ -14,9 +14,8 @@ import os
 import re
 from typing import List, Optional
 
+import httpx
 from openai import OpenAI
-
-from client import RecruitEnvClient
 
 # ---------------------------------------------------------------------------
 # Environment variables (match sample_inference.py pattern exactly)
@@ -26,6 +25,9 @@ API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
 MODEL_NAME = os.getenv("MODEL_NAME") or "gpt-4o-mini"
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")  # NO default
+
+# Environment server URL (our HF Space — plain REST, not WebSocket)
+ENV_URL = "https://heyavasthi-recruitenv.hf.space"
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -63,6 +65,38 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
         f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
         flush=True,
     )
+
+
+# ---------------------------------------------------------------------------
+# HTTP Environment Client (plain REST — no WebSocket)
+# ---------------------------------------------------------------------------
+
+
+class EnvHTTPClient:
+    """Minimal async HTTP client for our REST API endpoints."""
+
+    def __init__(self, base_url: str) -> None:
+        self.base_url = base_url.rstrip("/")
+        self._client = httpx.AsyncClient(timeout=60.0)
+
+    async def reset(self, task_id: str = "easy", seed: int = 42) -> dict:
+        r = await self._client.post(
+            f"{self.base_url}/reset",
+            json={"task_id": task_id, "seed": seed},
+        )
+        r.raise_for_status()
+        return r.json()
+
+    async def step(self, action: dict) -> dict:
+        r = await self._client.post(
+            f"{self.base_url}/step",
+            json=action,
+        )
+        r.raise_for_status()
+        return r.json()
+
+    async def close(self) -> None:
+        await self._client.aclose()
 
 
 # ---------------------------------------------------------------------------
@@ -152,14 +186,11 @@ def get_model_action(
 
 
 async def main() -> None:
-    # LLM client — uses API_BASE_URL (the LLM endpoint, e.g. router.huggingface.co)
+    # LLM client — uses API_BASE_URL (the LLM router endpoint)
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    # Environment client — connects to our HF Space or local docker image
-    if IMAGE_NAME:
-        env = await RecruitEnvClient.from_docker_image(IMAGE_NAME)
-    else:
-        env = RecruitEnvClient(base_url="https://heyavasthi-recruitenv.hf.space")
+    # Environment client — plain HTTP to our HF Space REST API
+    env = EnvHTTPClient(base_url=ENV_URL)
 
     history: List[str] = []
     rewards: List[float] = []
@@ -170,8 +201,7 @@ async def main() -> None:
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        result = await env.reset(task_id=TASK_NAME, seed=42)
-        observation = result if isinstance(result, dict) else result.dict()
+        observation = await env.reset(task_id=TASK_NAME, seed=42)
         last_reward = 0.0
 
         for step in range(1, MAX_STEPS + 1):
@@ -181,16 +211,11 @@ async def main() -> None:
             action = get_model_action(client, step, observation, history)
             result = await env.step(action)
 
-            if isinstance(result, dict):
-                observation = result.get("observation", {})
-                reward = result.get("reward", {})
-                if isinstance(reward, dict):
-                    reward = reward.get("step_reward", 0.0)
-                done = result.get("done", False)
-            else:
-                observation = result.observation
-                reward = result.reward or 0.0
-                done = result.done
+            observation = result.get("observation", {})
+            reward = result.get("reward", {})
+            if isinstance(reward, dict):
+                reward = reward.get("step_reward", 0.0)
+            done = result.get("done", False)
 
             rewards.append(reward)
             steps_taken = step
@@ -207,11 +232,14 @@ async def main() -> None:
         score = min(max(score, 0.0), 1.0)
         success = score >= SUCCESS_SCORE_THRESHOLD
 
+    except Exception as exc:
+        print(f"[DEBUG] Unhandled exception: {exc}", flush=True)
+
     finally:
         try:
             await env.close()
         except Exception as e:
-            print(f"[DEBUG] env.close() error (container cleanup): {e}", flush=True)
+            print(f"[DEBUG] env.close() error: {e}", flush=True)
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 
