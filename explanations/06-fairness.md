@@ -30,7 +30,7 @@ Hardcoded dict at the top of the file. 49 first names mapped to one of six group
 
 > Simple heuristic: map each first name to a broad origin group so the checker can detect whether the agent's shortlist is skewed toward or against any group. The groups are intentionally coarse — the goal is to catch gross imbalances, not to classify ethnicity precisely.
 
-This is a hackathon-grade fairness signal, not a Census Bureau classifier. It's good enough to detect "your agent shortlists nobody named Amara, Kwame, or Emeka while shortlisting everyone named Erik or Dmitri" — which *is* the kind of bias the env is built to surface.
+This is a first-pass fairness signal, not a Census Bureau classifier. It's good enough to detect "your agent shortlists nobody named Amara, Kwame, or Emeka while shortlisting everyone named Erik or Dmitri" — which *is* the kind of bias the env is built to surface.
 
 ## `_first_name` and `_get_group`
 

@@ -176,11 +176,11 @@ The repo has three different ways to "run an agent against the env" — easy to 
 
 | Script                       | Calls LLM?           | Talks to                  | Purpose                                            |
 | ---------------------------- | -------------------- | ------------------------- | -------------------------------------------------- |
-| `api/main.py:_run_rule_baseline` | No (pure heuristic) | Local env directly        | Powers `GET /baseline` so judges can ping it       |
+| `api/main.py:_run_rule_baseline` | No (pure heuristic) | Local env directly        | Powers `GET /baseline` for a no-key reference score |
 | `baseline/run_baseline.py`   | Yes (OpenAI SDK)     | localhost:7860 over HTTP  | The official "baseline inference script"          |
 | `inference.py`               | Yes (HF Router)      | HF Space URL over HTTP    | Standalone validator-format runner with `[START]/[STEP]/[END]` log format |
 
-`inference.py` is what an external automated evaluator runs against the deployed Space. It expects env vars `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`, hits `ENV_URL = https://heyavasthi-recruitenv.hf.space`, and prints structured per-step logs in the exact format the OpenEnv judging pipeline parses.
+`inference.py` is a standalone LLM evaluator that runs against the deployed Space. It expects env vars `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`, hits `ENV_URL = https://heyavasthi-recruitenv.hf.space`, and prints structured per-step logs in a fixed [START]/[STEP]/[END] format that is easy to parse.
 
 ## `client.py` — The OpenEnv-Core Wrapper
 
@@ -203,18 +203,6 @@ obs, reward, done, info = env.step(action_dict)
 
 This wraps the HTTP plumbing in a Gym-style API. `openenv-core`'s `GenericEnvClient` knows how to translate `reset`/`step`/`state` Python calls into the corresponding HTTP requests.
 
-## `validate_submission.sh`
-
-The repo's pre-submission validator (shell script, ~6KB). Runs through the OpenEnv compliance gate:
-
-- Builds the Docker image
-- Starts a container
-- Hits `/health`, `/reset`, `/step`, `/grader`, `/baseline`
-- Verifies `reset(seed=42)` twice gives identical responses (determinism)
-- Verifies all three graders produce scores in `[0, 1]`
-
-If anything fails, exits non-zero. This is what you run before submitting; if it passes locally, judging should also pass.
-
 ## Deployment Checklist (for the Interview)
 
 | Requirement                | Met by                                                  |
@@ -233,4 +221,3 @@ If anything fails, exits non-zero. This is what you run before submitting; if it
 - *"Single-worker uvicorn because the environment is a singleton. Multiple workers would mean each gets its own env and clients land on whichever — episode state would fragment."*
 - *"Non-root user, `sdk: docker` in the README front-matter, port 7860 everywhere — all HF Spaces requirements."*
 - *"Three inference scripts: in-server rule-based baseline at `GET /baseline`, OpenAI-based baseline in `baseline/run_baseline.py`, and an HF-router runner at `inference.py` that uses the validator's log format."*
-- *"`validate_submission.sh` is the pre-submission gate — Docker build, full HTTP smoke test including a `reset` determinism check and a `/grader` score-range check."*

@@ -1,7 +1,7 @@
 name: RecruitEnv
-version: "0.1.0"
+version: "2.0.0"
 description: >
-  OpenEnv-compliant RL environment simulating candidate pipeline triage.
+  RL environment simulating candidate pipeline triage.
   An agent reviews synthetic candidate profiles and makes shortlisting
   decisions against a job description.
 
@@ -11,8 +11,8 @@ space_url: "https://huggingface.co/spaces/heyavasthi/recruitenv"
 
 tasks:
   - id: easy
-    description: Screen 10 candidates, pick top 3
+    description: Screening Sprint (10 candidates, pick top 3)
   - id: medium
-    description: Conflicting signals evaluation (15 candidates, pick 5)
+    description: Conflicted Signals (5 candidates, pick 2)
   - id: hard
-    description: Batch triage 20 candidates, tight budget (pick 5)
+    description: Batch Triage (20 candidates, tight budget, pick 5)

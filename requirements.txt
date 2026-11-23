@@ -3,7 +3,6 @@ uvicorn
 pydantic
 numpy
 openai
-pytest
 httpx
 python-dotenv
 openenv-core

@@ -10,8 +10,6 @@ recruitenv/
 ├── CLAUDE.md                ← AI-assistant rules: hard constraints (no live HTTP, determinism,
 │                              port 7860, Pydantic v2). Lives in the repo so any LLM that
 │                              touches this codebase reads these rules first.
-├── PROBLEM_STATEMENT.md     ← Original hackathon problem statement (what the env had to do
-│                              to qualify). Useful as a "spec" reference.
 ├── README.md                ← Public docs. Has the HF Spaces front-matter at the top
 │                              (title, emoji, sdk: docker, app_port: 7860). Long, polished,
 │                              includes API examples + tables.
@@ -33,11 +31,7 @@ recruitenv/
 │                              deployed HF Space without writing httpx by hand.
 ├── inference.py             ← Standalone HF-router LLM evaluator. Reads env vars HF_TOKEN /
 │                              MODEL_NAME / API_BASE_URL, runs the easy task, logs in the
-│                              standard [START]/[STEP]/[END] format expected by the
-│                              automated judging system.
-├── sample_inference.py      ← Original reference inference (used to derive inference.py).
-├── validate_submission.sh   ← Pre-submission validator: spins up Docker, hits /health,
-│                              /reset, /step, /grader, /baseline; verifies determinism.
+│                              standard [START]/[STEP]/[END] log format.
 ├── __init__.py              ← Empty package marker for the repo root.
 ├── models.py                ← Compatibility re-export at repo root (so `from models import …`
 │                              still works for any external importers).

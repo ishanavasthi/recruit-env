@@ -1,5 +1,7 @@
 # RecruitEnv — Study Guides
 
+> **Version note.** These guides describe v1.0.0 (git tag `v1.0.0`). Version 2.0.0 changed the scoring: the reward is now sparse and equals the task grader's score, `score_dimension` is gone, `GET /state` no longer returns ground truth, observations carry revealed values, and fairness is out of the score until it is rebuilt. See [`CHANGELOG.md`](../CHANGELOG.md) and the [roadmap](../docs/research/2026-11-21-findings-and-roadmap.md).
+
 Comprehensive study material covering every major file and concept in this project. Read in order; each file builds on the previous one.
 
 ## Reading Order
