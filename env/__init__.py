@@ -1,4 +1,4 @@
-"""RecruitEnv — OpenEnv-compliant RL environment for candidate pipeline triage."""
+"""RecruitEnv — RL environment for candidate pipeline triage."""
 
 from env.environment import RecruitmentEnvironment
 from env.models import (
@@ -12,13 +12,12 @@ from env.models import (
     LeetCodeStats,
     MakeDecisionAction,
     Observation,
+    PublicState,
     ReadResumeSectionAction,
     ResumeSection,
     Reward,
-    ScoreDimensionAction,
 )
 from env.profile_factory import ProfileFactory
-from env.rewards import RewardCalculator, compute_reward
 from env.fairness import FairnessChecker, fairness_penalty
 
 __all__ = [
@@ -33,13 +32,11 @@ __all__ = [
     "LeetCodeStats",
     "MakeDecisionAction",
     "Observation",
+    "PublicState",
     "ReadResumeSectionAction",
     "ResumeSection",
     "Reward",
-    "ScoreDimensionAction",
     "ProfileFactory",
-    "RewardCalculator",
-    "compute_reward",
     "FairnessChecker",
     "fairness_penalty",
 ]

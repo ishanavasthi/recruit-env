@@ -24,7 +24,7 @@ class TestHealth:
         assert r.status_code == 200
         body = r.json()
         assert body["status"] == "ok"
-        assert body["version"] == "1.0.0"
+        assert body["version"] == "2.0.0"
 
 
 # -----------------------------------------------------------------------
@@ -88,7 +88,7 @@ class TestStep:
         # Reset and immediately finish the episode
         client.post("/reset", json={"task_id": "easy", "seed": 99})
         state = client.get("/state").json()
-        for c in state["candidates"]:
+        for c in state["candidates_summary"]:
             client.post(
                 "/step",
                 json={
@@ -102,7 +102,7 @@ class TestStep:
             "/step",
             json={
                 "type": "read_resume_section",
-                "candidate_id": state["candidates"][0]["id"],
+                "candidate_id": state["candidates_summary"][0]["id"],
                 "section": "education",
             },
         )
@@ -111,7 +111,7 @@ class TestStep:
     def test_step_returns_correct_shape(self) -> None:
         client.post("/reset", json={"task_id": "easy", "seed": 42})
         state = client.get("/state").json()
-        cid = state["candidates"][0]["id"]
+        cid = state["candidates_summary"][0]["id"]
 
         r = client.post(
             "/step",
@@ -127,7 +127,9 @@ class TestStep:
         assert "reward" in body
         assert "done" in body
         assert "info" in body
-        assert body["reward"]["step_reward"] == 0.03
+        assert body["reward"]["step_reward"] == 0.0
+        stats = body["observation"]["revealed_data"][cid]["platforms"]["leetcode"]
+        assert stats == body["info"]["data"]
 
 
 # -----------------------------------------------------------------------
@@ -138,13 +140,15 @@ class TestStep:
 class TestFullEpisode:
     def test_full_easy_episode(self) -> None:
         """Run a complete easy episode through the API and verify grading."""
-        # Reset
+        # Ground truth comes from the verifier side, never from the API
+        from env.environment import RecruitmentEnvironment
+
+        ref = RecruitmentEnvironment()
+        ref.reset("easy", 42)
+        gt = {c.id: c.ground_truth_label for c in ref.verifier_state().candidates}
+
         r = client.post("/reset", json={"task_id": "easy", "seed": 42})
         assert r.status_code == 200
-
-        # Get ground truth from /state
-        state = client.get("/state").json()
-        gt = {c["id"]: c["ground_truth_label"] for c in state["candidates"]}
 
         # Decide all candidates with correct labels
         for cid, label in gt.items():
@@ -165,9 +169,10 @@ class TestFullEpisode:
         r = client.post("/grader")
         assert r.status_code == 200
         grade = r.json()
-        assert 0.0 <= grade["score"] <= 1.0
+        assert grade["score"] >= 0.99
+        assert grade["score"] == last["reward"]["cumulative_reward"]
         assert grade["task_id"] == "easy"
-        assert "breakdown" in grade
+        assert grade["breakdown"]["correct"] == 10
 
     def test_grader_rejects_incomplete_episode(self) -> None:
         """Grading before episode ends returns 400."""
@@ -189,4 +194,90 @@ class TestState:
         assert r.status_code == 200
         body = r.json()
         assert body["task_id"] == "medium"
-        assert len(body["candidates"]) == 5
+        assert len(body["candidates_summary"]) == 5
+
+
+# -----------------------------------------------------------------------
+# hidden verifier: nothing an agent can call mid-episode leaks the answers
+# -----------------------------------------------------------------------
+
+_FORBIDDEN_KEYS = {"ground_truth", "ground_truth_label", "ground_truth_scores", "candidates"}
+
+
+def _keys(obj) -> set[str]:
+    """All dict keys anywhere in a decoded JSON value."""
+    if isinstance(obj, dict):
+        out = set(obj)
+        for v in obj.values():
+            out |= _keys(v)
+        return out
+    if isinstance(obj, list):
+        out: set[str] = set()
+        for v in obj:
+            out |= _keys(v)
+        return out
+    return set()
+
+
+class TestHiddenVerifier:
+    def test_no_ground_truth_reachable_mid_episode(self) -> None:
+        """Every GET route, /step and /grader return no ground-truth field mid-episode."""
+        obs = client.post("/reset", json={"task_id": "medium", "seed": 7}).json()
+        cid = obs["candidates_summary"][0]["id"]
+        bodies = [obs]
+        for action in (
+            {"type": "check_platform", "candidate_id": cid, "platform": "github"},
+            {"type": "read_resume_section", "candidate_id": cid, "section": "skills"},
+            {"type": "make_decision", "candidate_id": cid, "decision": "hold"},
+        ):
+            r = client.post("/step", json=action)
+            assert r.status_code == 200
+            bodies.append(r.json())
+
+        get_paths = [
+            route.path for route in app.routes
+            if "GET" in getattr(route, "methods", set())
+            and "{" not in route.path
+            and route.path not in {"/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"}
+        ]
+        assert "/state" in get_paths
+        for path in get_paths:
+            r = client.get(path)
+            assert r.status_code == 200, path
+            bodies.append(r.json())
+
+        r = client.post("/grader")
+        assert r.status_code == 400
+        bodies.append(r.json())
+
+        for body in bodies:
+            leaked = _keys(body) & _FORBIDDEN_KEYS
+            assert not leaked, f"leaked {leaked}"
+
+    def test_state_is_the_agent_view(self) -> None:
+        client.post("/reset", json={"task_id": "easy", "seed": 3})
+        state = client.get("/state").json()
+        assert state["task_id"] == "easy"
+        assert len(state["candidates_summary"]) == 10
+        assert state["is_done"] is False
+        assert state["episode_score"] is None
+
+    def test_grader_reports_ground_truth_after_episode(self) -> None:
+        obs = client.post("/reset", json={"task_id": "easy", "seed": 5}).json()
+        for c in obs["candidates_summary"]:
+            r = client.post("/step", json={"type": "make_decision", "candidate_id": c["id"], "decision": "hold"})
+        last = r.json()
+        assert last["done"] is True
+        grade = client.post("/grader").json()
+        assert set(grade["breakdown"]["ground_truth"]) == {c["id"] for c in obs["candidates_summary"]}
+        assert grade["score"] == last["reward"]["cumulative_reward"]
+
+    def test_score_dimension_action_is_gone(self) -> None:
+        obs = client.post("/reset", json={"task_id": "easy", "seed": 42}).json()
+        r = client.post("/step", json={
+            "type": "score_dimension",
+            "candidate_id": obs["candidates_summary"][0]["id"],
+            "dimension": "technical",
+            "score": 0.5,
+        })
+        assert r.status_code == 422

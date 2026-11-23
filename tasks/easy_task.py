@@ -21,17 +21,20 @@ EASY_CONFIG = TaskConfig(
     role_type="backend_dev",
 )
 
+_PERFECT_SHORTLIST_BONUS = 0.2
+
 
 class EasyGrader(BaseGrader):
     """Grader for the easy task.
 
     Scoring
     -------
-    - Base = correct_decisions / total_candidates
-    - Shortlist errors weighted 2x vs reject errors
+    - Base = weighted share of correct decisions; ground-truth shortlists
+      weigh 2x. An undecided candidate counts as wrong.
     - Perfect shortlist bonus: +0.2 if the agent shortlisted exactly the
       3 ground-truth shortlists (no false positives, no misses)
-    - Final score normalised to [0.0, 1.0]
+    - Score = (base + bonus) / 1.2, so a perfect episode scores 1.0 and any
+      mistake scores below it. Clamped to [0.001, 0.999].
     """
 
     def grade(self, initial_obs: Observation, final_state: EpisodeState) -> float:
@@ -48,7 +51,7 @@ class EasyGrader(BaseGrader):
         weighted_total = 0.0
         for c in candidates:
             cid = c.id
-            decision = decisions.get(cid, "hold")  # undecided → hold
+            decision = decisions.get(cid)  # undecided → wrong
             truth = gt[cid]
 
             if truth == "shortlist":
@@ -65,7 +68,9 @@ class EasyGrader(BaseGrader):
         # Perfect shortlist bonus
         gt_shortlist_ids = {cid for cid, label in gt.items() if label == "shortlist"}
         agent_shortlist_ids = {cid for cid, d in decisions.items() if d == "shortlist"}
-        bonus = 0.2 if agent_shortlist_ids == gt_shortlist_ids else 0.0
+        bonus = (
+            _PERFECT_SHORTLIST_BONUS if agent_shortlist_ids == gt_shortlist_ids else 0.0
+        )
 
-        raw = base_score + bonus
+        raw = (base_score + bonus) / (1.0 + _PERFECT_SHORTLIST_BONUS)
         return max(0.001, min(0.999, raw))

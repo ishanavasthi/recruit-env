@@ -13,41 +13,29 @@ import logging
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Annotated, Any, Union
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from env.environment import RecruitmentEnvironment
 from env.models import (
+    Action,
     CheckPlatformAction,
-    EpisodeState,
     MakeDecisionAction,
     Observation,
-    ReadResumeSectionAction,
+    PublicState,
     Reward,
-    ScoreDimensionAction,
 )
-from tasks import GRADER_REGISTRY, TASK_REGISTRY
+from tasks import TASK_REGISTRY
 
 logger = logging.getLogger("recruitenv.api")
 
-# ---------------------------------------------------------------------------
-# Action discriminated union — TypeAdapter for JSON Schema generation
-# ---------------------------------------------------------------------------
+VERSION = "2.0.0"
 
-Action = Annotated[
-    Union[
-        ReadResumeSectionAction,
-        CheckPlatformAction,
-        ScoreDimensionAction,
-        MakeDecisionAction,
-    ],
-    Field(discriminator="type"),
-]
-
+# TypeAdapter for the Action discriminated union's JSON Schema
 _action_adapter = TypeAdapter(Action)
 
 # ---------------------------------------------------------------------------
@@ -56,8 +44,6 @@ _action_adapter = TypeAdapter(Action)
 
 _env = RecruitmentEnvironment()
 _lock = asyncio.Lock()
-# Cache: task_id → initial_obs captured at reset time (needed by grader)
-_initial_obs: dict[str, Observation] = {}
 # Cache for the simple baseline agent results
 _baseline_cache: dict[str, Any] | None = None
 
@@ -132,15 +118,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="RecruitEnv",
-    description="OpenEnv-compliant RL environment for candidate pipeline triage.",
-    version="1.0.0",
+    description="RL environment for candidate pipeline triage.",
+    version=VERSION,
     lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -155,13 +141,13 @@ app.add_middleware(RequestLoggingMiddleware)
 @app.get("/")
 async def root() -> dict:
     """Root landing page."""
-    return {"status": "ok", "environment": "RecruitEnv", "version": "1.0.0"}
+    return {"status": "ok", "environment": "RecruitEnv", "version": VERSION}
 
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     """Health check."""
-    return HealthResponse(status="ok", version="1.0.0")
+    return HealthResponse(status="ok", version=VERSION)
 
 
 @app.post("/reset", response_model=Observation)
@@ -171,12 +157,9 @@ async def reset(body: ResetRequest | None = None) -> Observation:
         body = ResetRequest()
     async with _lock:
         try:
-            obs = _env.reset(body.task_id, body.seed)
+            return _env.reset(body.task_id, body.seed)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
-        # Cache initial obs for grading later
-        _initial_obs[body.task_id] = obs
-        return obs
 
 
 @app.post("/step", response_model=StepResponse)
@@ -195,9 +178,9 @@ async def step(action: Action) -> StepResponse:
         )
 
 
-@app.get("/state", response_model=EpisodeState)
-async def get_state() -> EpisodeState:
-    """Return full internal environment state."""
+@app.get("/state", response_model=PublicState)
+async def get_state() -> PublicState:
+    """Return the agent-visible episode state (no ground truth)."""
     async with _lock:
         try:
             return _env.state()
@@ -217,49 +200,20 @@ async def list_tasks() -> dict[str, Any]:
 
 @app.post("/grader", response_model=GradeResponse)
 async def grade() -> GradeResponse:
-    """Grade the current completed episode."""
+    """Grade the current completed episode.
+
+    The score equals the terminal step's ``cumulative_reward``. The breakdown
+    includes ground-truth labels, so it is only available after the episode.
+    """
     async with _lock:
         try:
-            state = _env.state()
-        except ValueError as exc:
+            report = _env.grade_report()
+        except (RuntimeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
-        if not state.is_done:
-            raise HTTPException(
-                status_code=400,
-                detail="Episode is not complete. Finish the episode before grading.",
-            )
-
-        task_id = state.task_id
-        grader = GRADER_REGISTRY.get(task_id)
-        if grader is None:
-            raise HTTPException(
-                status_code=400, detail=f"No grader for task '{task_id}'"
-            )
-
-        initial_obs = _initial_obs.get(task_id)
-        if initial_obs is None:
-            raise HTTPException(
-                status_code=400,
-                detail="No initial observation cached. Reset and replay the episode.",
-            )
-
-        score = grader.grade(initial_obs, state)
-
-        gt_map = {c.id: c.ground_truth_label for c in state.candidates}
-        breakdown: dict[str, Any] = {
-            "grader_score": score,
-            "success": score >= TASK_REGISTRY[task_id].success_threshold,
-            "threshold": TASK_REGISTRY[task_id].success_threshold,
-            "decisions": dict(state.decisions_made),
-            "ground_truth": gt_map,
-            "correct": sum(
-                1 for cid, d in state.decisions_made.items()
-                if gt_map.get(cid) == d
-            ),
-            "total": len(state.candidates),
-        }
-
+        score = report.pop("score")
+        task_id = report.pop("task_id")
+        breakdown: dict[str, Any] = {"grader_score": score, **report}
         return GradeResponse(score=score, breakdown=breakdown, task_id=task_id)
 
 
@@ -295,33 +249,30 @@ async def baseline() -> BaselineResponse:
 
 
 async def _run_rule_baseline(task_id: str, seed: int = 42) -> float:
-    """Play one episode with a simple heuristic agent, return grader score."""
+    """Play one episode with a simple heuristic agent, return its episode score."""
     env = RecruitmentEnvironment()
     obs = env.reset(task_id, seed)
-    initial_obs = obs
-
-    state = env.state()
     cids = [c["id"] for c in obs.candidates_summary]
+    done = False
 
     for cid in cids:
-        if obs.done:
+        if done:
             break
 
-        # Check leetcode
-        _, _, done, info_lc = env.step(
+        obs, _, done, _ = env.step(
             CheckPlatformAction(candidate_id=cid, platform="leetcode")
         )
-        lc_data = info_lc.get("data", {})
+        if done:
+            break
+        obs, _, done, _ = env.step(
+            CheckPlatformAction(candidate_id=cid, platform="github")
+        )
         if done:
             break
 
-        # Check github
-        obs, _, done, info_gh = env.step(
-            CheckPlatformAction(candidate_id=cid, platform="github")
-        )
-        gh_data = info_gh.get("data", {})
-        if done:
-            break
+        platforms = obs.revealed_data[cid]["platforms"]
+        lc_data = platforms.get("leetcode", {})
+        gh_data = platforms.get("github", {})
 
         # Simple heuristic thresholds
         problems = lc_data.get("problems_solved", 0)
@@ -338,11 +289,12 @@ async def _run_rule_baseline(task_id: str, seed: int = 42) -> float:
         obs, _, done, _ = env.step(
             MakeDecisionAction(candidate_id=cid, decision=decision)
         )
-        if done:
-            break
 
-    final_state = env.state()
-    grader = GRADER_REGISTRY.get(task_id)
-    if grader is None:
-        return 0.0
-    return grader.grade(initial_obs, final_state)
+    # Burn any remaining budget so the episode ends and is scored.
+    while not done:
+        obs, _, done, _ = env.step(
+            CheckPlatformAction(candidate_id=cids[0], platform="leetcode")
+        )
+
+    score = env.state().episode_score
+    return score if score is not None else 0.0
