@@ -34,9 +34,9 @@ class HardGrader(BaseGrader):
     - Primary metric: F1 score of shortlist decisions
         - Precision = true shortlists / all agent shortlists
         - Recall    = true shortlists / all ground-truth shortlists
-    - Undecided candidates at episode end are auto-graded as "hold"
+    - Undecided candidates at episode end count as not shortlisted ("hold")
     - Efficiency bonus: (steps_saved / max_steps) * 0.1
-    - Final score clamped to [0.0, 1.0]
+    - Final score clamped to [0.001, 0.999]
     """
 
     def grade(self, initial_obs: Observation, final_state: EpisodeState) -> float:

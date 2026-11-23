@@ -119,7 +119,7 @@ def _error_detail(r: httpx.Response) -> str:
 SYSTEM_PROMPT = """You are a hiring agent screening candidates for one job.
 Each step you take ONE action. Gathering information costs a step, and the
 episode ends when every candidate has a decision or the step budget runs out.
-Undecided candidates count as wrong, so leave enough steps to decide everyone.
+An undecided candidate earns no credit, so leave enough steps to decide everyone.
 
 Actions (respond with ONE JSON object only, no explanation, no markdown):
 1. {"type": "check_platform", "candidate_id": "...", "platform": "github|leetcode|kaggle"}

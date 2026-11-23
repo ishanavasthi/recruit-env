@@ -18,7 +18,7 @@ import pytest
 
 from env.environment import RecruitmentEnvironment
 from env.models import CheckPlatformAction, MakeDecisionAction, ReadResumeSectionAction
-from tasks import TASK_REGISTRY
+from tasks import GRADER_REGISTRY, TASK_REGISTRY
 
 SEEDS = range(200)
 TASKS = ["easy", "medium", "hard"]
@@ -148,10 +148,13 @@ def test_mutant_fails_by_wide_margin(task: str, mutant: str, oracle_scores) -> N
 @pytest.mark.parametrize("task", TASKS)
 @pytest.mark.parametrize("policy", ["oracle", *sorted(MUTANTS)])
 def test_one_score(task: str, policy: str) -> None:
-    """Step rewards sum to the episode score, which equals the grader's report."""
+    """Step rewards sum to the episode score, which is the task grader's score."""
     fn = oracle if policy == "oracle" else MUTANTS[policy]
     for seed in range(20):
+        initial_obs = RecruitmentEnvironment().reset(task, seed)
         score, rewards, env = _play(task, seed, fn)
         assert sum(rewards) == pytest.approx(score, abs=1e-9)
         assert all(r == 0.0 for r in rewards[:-1]), "only the terminal step carries reward"
+        regraded = GRADER_REGISTRY[task].grade(initial_obs, env.verifier_state())
+        assert score == pytest.approx(regraded, abs=1e-6)
         assert env.grade_report()["score"] == score

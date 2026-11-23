@@ -96,7 +96,7 @@ The `job_description` includes dimension weights that sum to 1.0:
 
 All actions are JSON objects with a `type` discriminator field:
 
-Every action costs one step of the budget.
+Every accepted action costs one step of the budget. A rejected action (unknown candidate, second decision for a candidate, malformed JSON) returns 400 or 422 and costs nothing.
 
 | Action                | Parameters                                                                | Effect                                            |
 | --------------------- | ------------------------------------------------------------------------- | ------------------------------------------------- |
@@ -134,7 +134,7 @@ Platform stats revealed per `check_platform`:
 
 ### Task-specific grading
 
-In every task an undecided candidate counts as wrong.
+In the easy and medium tasks an undecided candidate counts as wrong. The hard task scores shortlists only, so an undecided candidate counts as not shortlisted.
 
 **Easy** : Weighted accuracy where ground-truth shortlists weigh 2x. If the agent shortlists exactly the 3 ground-truth shortlists: +0.2 bonus. Score = (accuracy + bonus) / 1.2, so only a perfect episode reaches the maximum.
 
@@ -163,7 +163,10 @@ Mean score over 200 seeds per task (`scripts/probe_scoring.py`):
 | All shortlist                            | 0.385 |   0.400 | 0.433 |
 | Decide one true reject, then idle        | 0.064 |   0.200 | 0.001 |
 
-**Known limitation.** A single platform field still separates the labels, so one check per candidate is enough to pass every task. [#9](https://github.com/ishanavasthi/recruit-env/issues/9) makes information gathering matter.
+**Known limitations.**
+
+- A single platform field still separates the labels, so one check per candidate is enough to pass every task. [#9](https://github.com/ishanavasthi/recruit-env/issues/9) makes information gathering matter.
+- Seeds are chosen by the client and the generator is open source, and `POST /grader` returns the answer key after an episode. An agent that replays a seed it has already been graded on can score the maximum. Nothing leaks *during* an episode, but scores are not from held-out data; evaluate on seeds the agent has not seen.
 
 ---
 
@@ -222,8 +225,8 @@ python baseline/run_baseline.py
 
 The baseline uses three strategies depending on step budget:
 
-- **Full mode** (easy, &ge;2.8 steps/candidate): check GitHub + LeetCode, then LLM decides
-- **Quick mode** (medium, &ge;1.8 steps/candidate): check GitHub only, then LLM decides
+- **Full mode** (easy and medium, &ge;2.8 steps/candidate): check GitHub + LeetCode, then LLM decides
+- **Quick mode** (&ge;1.8 steps/candidate): check GitHub only, then LLM decides
 - **Batch mode** (hard, <1.8 steps/candidate): check GitHub while the budget still leaves a step for every remaining decision, then rule-based decisions
 
 Every statistic comes from the observation, and each check costs a step.
