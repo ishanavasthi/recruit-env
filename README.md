@@ -11,12 +11,11 @@ pinned: false
 # RecruitEnv
 
 ![Python 3.11](https://img.shields.io/badge/python-3.11-blue)
-![OpenEnv](https://img.shields.io/badge/OpenEnv-compliant-green)
 ![HF Spaces](https://img.shields.io/badge/HF%20Spaces-ready-yellow)
 ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
-![Tests](https://img.shields.io/badge/tests-35%20passed-brightgreen)
+[![Tests](https://github.com/ishanavasthi/recruit-env/actions/workflows/tests.yml/badge.svg)](https://github.com/ishanavasthi/recruit-env/actions/workflows/tests.yml)
 
-An OpenEnv-compliant reinforcement learning environment that simulates **candidate pipeline triage**, the process of reviewing developer profiles across multiple platforms and making shortlisting decisions against a job description.
+A reinforcement learning environment that simulates **candidate pipeline triage**, the process of reviewing developer profiles across multiple platforms and making shortlisting decisions against a job description.
 
 ---
 
@@ -32,7 +31,7 @@ The environment is fully synthetic and deterministic. No live API calls. `reset(
 
 - **Information asymmetry**: the agent starts knowing nothing about candidates and must pay (in steps) to reveal signals
 - **Exploration-exploitation tradeoff**: gathering more signals improves decisions but consumes budget
-- **Multi-objective optimization**: accuracy, efficiency, and demographic fairness are all scored
+- **One honest score**: the episode's reward is the task grader's score, tested against a reference solution and a set of degenerate policies (see [Scoring](#scoring))
 - **Graded difficulty**: three tasks from generous budgets (4 steps/candidate) to extreme time pressure (1.5 steps/candidate)
 
 ---
@@ -50,16 +49,15 @@ loop:
   agent picks action:
     read_resume_section(candidate_id, section)    -- reveals resume text
     check_platform(candidate_id, platform)        -- reveals platform stats
-    score_dimension(candidate_id, dimension, score) -- records assessment
     make_decision(candidate_id, decision)          -- terminal per candidate
 
   environment returns:
-    observation  -- updated revealed data, decisions so far
-    reward       -- step reward for information gathering
+    observation  -- everything revealed so far (values included), decisions so far
+    reward       -- 0.0, except the last step, which carries the episode score
     done         -- True when all decided OR budget exhausted
     info         -- action-specific metadata
 
-episode ends --> grader scores decisions against ground truth
+episode ends --> the task grader scores decisions against ground truth
 ```
 
 Candidate profiles are generated with realistic distributions. A senior developer has 30-60 GitHub repos, 250+ LeetCode problems solved, and Kaggle Expert+ rank. A junior developer has <10 repos, <100 problems, and no Kaggle medals. Ground-truth labels (shortlist/hold/reject) are always consistent with the profile tier, plus controlled noise for ambiguous cases.
@@ -77,10 +75,11 @@ The agent receives an `Observation` after every step:
 | `steps_remaining`    | `int`             | Budget left in this episode                                            |
 | `job_description`    | `JobDescription`  | Role, required skills, seniority, dimension weights                    |
 | `candidates_summary` | `list[dict]`      | `[{"id": "candidate_001", "name": "Wei Zhang"}, ...]` &mdash; no stats |
-| `revealed_data`      | `dict`            | `candidate_id -> {"resume_sections": [...], "platforms": [...]}`       |
+| `revealed_data`      | `dict`            | `candidate_id -> {"resume_sections": {name: section}, "platforms": {name: stats}}` |
 | `decisions_made`     | `dict[str, str]`  | `candidate_id -> "shortlist" \| "hold" \| "reject"`                    |
-| `scores_recorded`    | `dict[str, dict]` | `candidate_id -> {"technical": 0.8, ...}`                              |
 | `done`               | `bool`            | Whether the episode has ended                                          |
+
+The observation is the agent's whole view: every value it has revealed is in `revealed_data`. Ground-truth labels never reach an agent during an episode.
 
 The `job_description` includes dimension weights that sum to 1.0:
 
@@ -97,12 +96,13 @@ The `job_description` includes dimension weights that sum to 1.0:
 
 All actions are JSON objects with a `type` discriminator field:
 
-| Action                | Parameters                                                                                     |        Step Reward         | Effect                                            |
-| --------------------- | ---------------------------------------------------------------------------------------------- | :------------------------: | ------------------------------------------------- |
-| `read_resume_section` | `candidate_id`, `section` (`"education"` \| `"experience"` \| `"skills"`)                      | +0.02 (new) / 0.0 (repeat) | Reveals resume section text + years of experience |
-| `check_platform`      | `candidate_id`, `platform` (`"github"` \| `"leetcode"` \| `"kaggle"`)                          | +0.03 (new) / 0.0 (repeat) | Reveals full platform statistics                  |
-| `score_dimension`     | `candidate_id`, `dimension` (`"technical"` \| `"experience"` \| `"growth"`), `score` (0.0-1.0) |           +0.02            | Records agent's assessment score                  |
-| `make_decision`       | `candidate_id`, `decision` (`"shortlist"` \| `"hold"` \| `"reject"`)                           |            0.0             | Terminal for this candidate. Cannot be reversed.  |
+Every accepted action costs one step of the budget. A rejected action (unknown candidate, second decision for a candidate, malformed JSON) returns 400 or 422 and costs nothing.
+
+| Action                | Parameters                                                                | Effect                                            |
+| --------------------- | ------------------------------------------------------------------------- | ------------------------------------------------- |
+| `read_resume_section` | `candidate_id`, `section` (`"education"` \| `"experience"` \| `"skills"`) | Reveals resume section text + years of experience |
+| `check_platform`      | `candidate_id`, `platform` (`"github"` \| `"leetcode"` \| `"kaggle"`)     | Reveals full platform statistics                  |
+| `make_decision`       | `candidate_id`, `decision` (`"shortlist"` \| `"hold"` \| `"reject"`)      | Final for this candidate. Cannot be reversed.     |
 
 Example action:
 
@@ -128,73 +128,53 @@ Platform stats revealed per `check_platform`:
 
 |   Task   | Name               | Candidates | Budget | Steps/Candidate | Label Split  | Threshold | Grading                                                         |
 | :------: | ------------------ | :--------: | :----: | :-------------: | :----------: | :-------: | --------------------------------------------------------------- |
-|  `easy`  | Screening Sprint   |     10     |   40   |       4.0       | 3S / 4H / 3R |   0.75    | Weighted accuracy (shortlist errors 2x) + perfect bonus         |
-| `medium` | Conflicted Signals |     5      |   25   |       5.0       | 2S / 2H / 1R |   0.70    | Accuracy + thoroughness bonus/penalty for conflicted candidates |
+|  `easy`  | Screening Sprint   |     10     |   40   |       4.0       | 3S / 4H / 3R |   0.75    | Weighted accuracy (shortlists 2x) + perfect-shortlist bonus     |
+| `medium` | Conflicted Signals |     5      |   25   |       5.0       | 2S / 2H / 1R |   0.70    | Accuracy                                                        |
 |  `hard`  | Batch Triage       |     20     |   30   |       1.5       | 5S / 8H / 7R |   0.60    | Shortlist F1 score + efficiency bonus                           |
 
 ### Task-specific grading
 
-**Easy** : Weighted accuracy where shortlist misclassifications cost 2x. If the agent identifies exactly the 3 ground-truth shortlists with zero false positives: +0.2 bonus. Score clamped to [0, 1].
+In the easy and medium tasks an undecided candidate counts as wrong. The hard task scores shortlists only, so an undecided candidate counts as not shortlisted.
 
-**Medium** : Two candidates have deliberately conflicting signals (e.g., strong GitHub but weak LeetCode). Per-conflicted-candidate: +0.15 if agent checked all 3 platforms before deciding (thoroughness), -0.15 if agent decided with <2 platforms checked (hastiness).
+**Easy** : Weighted accuracy where ground-truth shortlists weigh 2x. If the agent shortlists exactly the 3 ground-truth shortlists: +0.2 bonus. Score = (accuracy + bonus) / 1.2, so only a perfect episode reaches the maximum.
 
-**Hard** : Primary metric is **shortlist F1 score** (precision &times; recall of shortlist decisions). Undecided candidates auto-graded as "hold". Efficiency bonus: `(steps_saved / max_steps) * 0.1`. With only 1.5 steps per candidate, the agent must triage aggressively.
+**Medium** : Share of correct decisions. The task is meant to test conflicting signals across platforms, but the generator does not produce them yet, so the grader does not reward extra checks. [#9](https://github.com/ishanavasthi/recruit-env/issues/9) adds a real conflict mode.
 
----
+**Hard** : Primary metric is **shortlist F1 score** (precision &times; recall of shortlist decisions). Efficiency bonus: `(steps_saved / max_steps) * 0.1`. With only 1.5 steps per candidate, the agent must triage aggressively.
 
-## Reward Function
-
-The reward has four components:
-
-### Step Reward
-
-Small positive reward for gathering new information. Incentivizes exploration over idle actions.
-
-```
-new resume section:  +0.02
-new platform check:  +0.03
-score dimension:     +0.02
-repeat/decision:      0.00
-```
-
-### Terminal Accuracy Reward
-
-At episode end, each decision is scored against ground truth:
-
-| Decision             | Truth     |                           Score |
-| -------------------- | --------- | ------------------------------: |
-| Correct shortlist    | shortlist | +1.0 &times; `weight_technical` |
-| Correct reject       | reject    |                            +0.5 |
-| Correct hold         | hold      |                            +0.3 |
-| Shortlisted a reject | reject    |                            -0.5 |
-| Rejected a shortlist | shortlist |                            -0.3 |
-| Any other error      | &mdash;   |                            -0.1 |
-
-Raw score normalized to [0, 1] across the range [-0.5n, 1.0n].
-
-### Efficiency Bonus
-
-+0.1 if **all** decisions are correct **and** the agent used less than 60% of the step budget.
-
-### Fairness Penalty
-
-See below.
-
-**Final score** = `clamp(accuracy + efficiency - fairness_penalty, 0, 1)`
+Scores are clamped to [0.001, 0.999].
 
 ---
 
-## Fairness Mechanism
+## Scoring
 
-The environment checks whether the agent's shortlist rate is balanced across demographic groups. Candidate names are mapped to 6 origin groups (South Asian, East Asian, Latin American, European, Middle Eastern/North African, African) using a deterministic first-name lookup.
+An episode has one score: the task grader's score.
 
-| Max shortlist-rate difference across groups | Penalty |
-| :-----------------------------------------: | :-----: |
-|                    < 0.2                    |   0.0   |
-|               0.2 &ndash; 0.4               |   0.1   |
-|                  &ge; 0.4                   |   0.2   |
+- **Sparse reward.** Every step before the last returns `step_reward = 0.0`. The terminal step returns the grader's score as `step_reward`, and `cumulative_reward` (the running sum) equals it. `POST /grader` reports the same number.
+- **Scoring contract.** `tests/test_scoring_contract.py` plays a reference solution and six degenerate policies over 200 seeds per task. The reference solution must score at least 0.99 on every seed. Doing nothing, holding everyone, shortlisting everyone, rejecting everyone, deciding one candidate and idling, and revealing everything without deciding must each fall below the task threshold, and at least 0.4 below the reference, on every seed.
 
-This rewards agents that make decisions based on candidate qualifications rather than demographic patterns in the data. The penalty is subtracted from the final score.
+Mean score over 200 seeds per task (`scripts/probe_scoring.py`):
+
+| Policy                                   |  easy |  medium |  hard |
+| ---------------------------------------- | ----: | ------: | ----: |
+| Reference solution (all correct)         | 0.999 |   0.999 | 0.999 |
+| Do nothing                               | 0.001 |   0.001 | 0.001 |
+| All hold                                 | 0.256 |   0.400 | 0.033 |
+| All shortlist                            | 0.385 |   0.400 | 0.433 |
+| Decide one true reject, then idle        | 0.064 |   0.200 | 0.001 |
+
+**Known limitations.**
+
+- A single platform field still separates the labels, so one check per candidate is enough to pass every task. [#9](https://github.com/ishanavasthi/recruit-env/issues/9) makes information gathering matter.
+- Seeds are chosen by the client and the generator is open source, and `POST /grader` returns the answer key after an episode. An agent that replays a seed it has already been graded on can score the maximum. Nothing leaks *during* an episode, but scores are not from held-out data; evaluate on seeds the agent has not seen.
+
+---
+
+## Fairness
+
+Version 2.0.0 takes fairness out of the score. The v1 penalty compared shortlist rates across six name-origin groups on pools of 5&ndash;20 candidates, where a group often has one member, so it penalised a 100%-correct agent in 94&ndash;100% of seeds. Names are assigned independently of quality, so the penalty measured small-sample noise, not bias.
+
+`env/fairness.py` (`FairnessChecker`) is still in the codebase. [#10](https://github.com/ishanavasthi/recruit-env/issues/10) replaces it with counterfactual twins: candidate pairs with identical signals and names from different groups, where a different decision within a pair is a measurable flip.
 
 ---
 
@@ -211,7 +191,7 @@ The server starts at `http://localhost:7860`. Health check:
 
 ```bash
 curl http://localhost:7860/health
-# {"status": "ok", "version": "1.0.0"}
+# {"status": "ok", "version": "2.0.0"}
 ```
 
 ### Local
@@ -224,6 +204,7 @@ uvicorn api.main:app --host 0.0.0.0 --port 7860 --reload
 ### Tests
 
 ```bash
+pip install -r requirements-dev.txt
 pytest tests/ -v
 ```
 
@@ -244,9 +225,21 @@ python baseline/run_baseline.py
 
 The baseline uses three strategies depending on step budget:
 
-- **Full mode** (easy, &ge;2.8 steps/candidate): check GitHub + LeetCode, then LLM decides
-- **Quick mode** (medium, &ge;1.8 steps/candidate): check GitHub only, then LLM decides
-- **Batch mode** (hard, <1.8 steps/candidate): read all stats from `/state`, rule-based decisions for all 20 candidates in 20 steps
+- **Full mode** (easy and medium, &ge;2.8 steps/candidate): check GitHub + LeetCode, then LLM decides
+- **Quick mode** (&ge;1.8 steps/candidate): check GitHub only, then LLM decides
+- **Batch mode** (hard, <1.8 steps/candidate): check GitHub while the budget still leaves a step for every remaining decision, then rule-based decisions
+
+Every statistic comes from the observation, and each check costs a step.
+
+### LLM inference script
+
+`inference.py` plays one episode with any OpenAI-compatible model and prints the score from `POST /grader`:
+
+```bash
+ENV_URL=http://localhost:7860 TASK=easy SEED=42 \
+API_BASE_URL=https://router.huggingface.co/v1 MODEL_NAME=<model> HF_TOKEN=<key> \
+python inference.py
+```
 
 Results are saved to `baseline/baseline_scores.json`.
 
@@ -274,7 +267,7 @@ curl http://localhost:7860/health
 ```
 
 ```json
-{ "status": "ok", "version": "1.0.0" }
+{ "status": "ok", "version": "2.0.0" }
 ```
 
 ### `POST /reset`
@@ -296,7 +289,6 @@ curl -X POST http://localhost:7860/reset \
   "candidates_summary": [{"id": "candidate_001", "name": "Dmitri Volkov"}, ...],
   "revealed_data": {},
   "decisions_made": {},
-  "scores_recorded": {},
   "done": false
 }
 ```
@@ -313,8 +305,9 @@ curl -X POST http://localhost:7860/step \
 
 ```json
 {
-  "observation": {"task_id": "easy", "step_number": 1, "steps_remaining": 39, ...},
-  "reward": {"step_reward": 0.03, "cumulative_reward": 0.0, "fairness_penalty": 0.0, "accuracy_bonus": 0.0},
+  "observation": {"task_id": "easy", "step_number": 1, "steps_remaining": 39,
+                  "revealed_data": {"candidate_001": {"resume_sections": {}, "platforms": {"github": {"repos": 3, ...}}}}, ...},
+  "reward": {"step_reward": 0.0, "cumulative_reward": 0.0, "breakdown": {}},
   "done": false,
   "info": {"data": {"repos": 3, "stars_received": 7, "commit_streak_days": 4, ...}}
 }
@@ -322,7 +315,7 @@ curl -X POST http://localhost:7860/step \
 
 ### `GET /state`
 
-Return full internal state (including ground-truth labels which are useful for debugging, not for agents).
+Return the agent-visible episode state: task, budget, job description, candidate ids and names, revealed data, decisions, and the episode score once done. It contains no candidate profiles and no ground truth.
 
 ```bash
 curl http://localhost:7860/state
@@ -349,7 +342,7 @@ curl http://localhost:7860/tasks
 
 ### `POST /grader`
 
-Grade a completed episode. Returns 400 if episode is still running.
+Grade a completed episode. Returns 400 if the episode is still running. The score equals the terminal step's `cumulative_reward`; the breakdown includes the ground truth, which is why it is only available after the episode.
 
 ```bash
 curl -X POST http://localhost:7860/grader
@@ -357,14 +350,16 @@ curl -X POST http://localhost:7860/grader
 
 ```json
 {
-  "score": 1.0,
+  "score": 0.999,
   "task_id": "easy",
   "breakdown": {
-    "grader_score": 1.0,
+    "grader_score": 0.999,
     "success": true,
     "threshold": 0.75,
     "correct": 10,
     "total": 10,
+    "steps_used": 10,
+    "max_steps": 40,
     "decisions": {"candidate_001": "reject", "candidate_002": "shortlist", ...},
     "ground_truth": {"candidate_001": "reject", "candidate_002": "shortlist", ...}
   }
@@ -381,7 +376,7 @@ curl http://localhost:7860/baseline
 
 ```json
 {
-  "scores": { "easy_task": 1.0, "medium_task": 1.0, "hard_task": 0.3333 },
+  "scores": { "easy_task": 0.9359, "medium_task": 0.999, "hard_task": 0.3333 },
   "timestamp": "2026-04-08T00:00:00+00:00"
 }
 ```
@@ -393,12 +388,16 @@ curl http://localhost:7860/baseline
 ```
 recruitenv/
 ├── __init__.py                # Package root
-├── client.py                  # OpenEnv client: RecruitEnvClient with reset(), step(), state()
+├── client.py                  # OpenEnv client stub (rewritten in Phase 4 of the roadmap)
+├── inference.py               # LLM agent: plays one episode, reports the /grader score
 ├── pyproject.toml             # Project metadata, dependencies, entry points
-├── openenv.yaml               # OpenEnv specification
+├── openenv.yaml               # OpenEnv manifest
 ├── Dockerfile                 # Python 3.11-slim, non-root user, healthcheck
 ├── docker-compose.yml         # Single service, port 7860
-├── requirements.txt           # fastapi, uvicorn, pydantic, numpy, openai, pytest, httpx
+├── requirements.txt           # Runtime dependencies
+├── requirements-dev.txt       # + pytest
+├── CHANGELOG.md
+├── LICENSE
 ├── README.md
 │
 ├── server/                    # OpenEnv standard entry point
@@ -409,16 +408,15 @@ recruitenv/
 ├── env/                       # Core environment (zero external dependencies)
 │   ├── __init__.py            # Re-exports all public symbols
 │   ├── models.py              # Pydantic v2 models: Action (discriminated union), Observation, Reward, EpisodeState
-│   ├── environment.py         # RecruitmentEnvironment: reset(), step(), state() — thread-safe
+│   ├── environment.py         # RecruitmentEnvironment: reset(), step(), state(), verifier_state(), grade_report()
 │   ├── profile_factory.py     # Synthetic profile generator: 50 diverse names, 3 tiers, 4 role types
-│   ├── rewards.py             # RewardCalculator: step rewards, terminal scoring, efficiency bonus
-│   └── fairness.py            # FairnessChecker: demographic parity of shortlist rates
+│   └── fairness.py            # FairnessChecker (v1 parity penalty; not part of the score since 2.0.0)
 │
 ├── tasks/                     # Task definitions and graders
 │   ├── __init__.py            # TASK_REGISTRY + GRADER_REGISTRY
 │   ├── base.py                # TaskConfig dataclass + BaseGrader ABC
 │   ├── easy_task.py           # Screening Sprint: 10 candidates, weighted accuracy grader
-│   ├── medium_task.py         # Conflicted Signals: 5 candidates, thoroughness grader
+│   ├── medium_task.py         # Conflicted Signals: 5 candidates, accuracy grader
 │   └── hard_task.py           # Batch Triage: 20 candidates, F1 grader
 │
 ├── api/                       # FastAPI application
@@ -428,8 +426,15 @@ recruitenv/
 ├── baseline/                  # Baseline agent
 │   └── run_baseline.py        # Structured loop: LLM decisions + rule-based fallback
 │
-└── tests/                     # pytest suite (35 tests)
-    ├── test_environment.py    # Reset determinism, step actions, terminal conditions, error handling
+├── scripts/
+│   └── probe_scoring.py       # Scores fixed policies over 200 seeds per task
+│
+├── docs/research/             # Findings and roadmap
+│
+└── tests/                     # pytest suite
+    ├── test_environment.py    # Reset determinism, step actions, terminal conditions, observation sufficiency
     ├── test_graders.py        # Grader accuracy, determinism, F1 validation, range checks
-    └── test_api.py            # Endpoint responses, full episode flow, error codes
+    ├── test_api.py            # Endpoint responses, full episode flow, no ground truth mid-episode
+    ├── test_inference.py      # inference.py episode loop against the API, scripted model
+    └── test_scoring_contract.py  # Reference solution vs. degenerate policies, 200 seeds per task
 ```

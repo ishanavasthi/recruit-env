@@ -277,7 +277,7 @@ Why cache the initial obs? Because the grader contract is `grade(initial_obs, fi
 
 | Aspect                     | In-episode Reward (`env/rewards.py`)             | Grader (`tasks/*_task.py`)                       |
 | -------------------------- | ------------------------------------------------ | ------------------------------------------------ |
-| Who consumes it?           | The agent (during training / inference)         | The judging system / leaderboard                 |
+| Who consumes it?           | The agent (during training / inference)         | The evaluation harness / leaderboard             |
 | When is it computed?       | Every step, plus a terminal aggregate           | Once, at the end, on demand via `POST /grader`   |
 | What signal does it carry? | Step rewards + accuracy + efficiency − fairness | Task-specific rubric (weighted acc / thoroughness / F1) |
 | Is it task-specific?       | No — same logic across all tasks                | Yes — different per task                         |

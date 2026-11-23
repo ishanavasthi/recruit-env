@@ -30,11 +30,11 @@ class TestEasyGrader:
     def test_easy_grader_perfect_score(self, env: RecruitmentEnvironment) -> None:
         """All correct decisions → score >= 0.95 (includes bonus)."""
         obs = env.reset("easy", seed=42)
-        state = env.state()
+        state = env.verifier_state()
         gt = {c.id: c.ground_truth_label for c in state.candidates}
         _decide_all(env, gt)
 
-        final = env.state()
+        final = env.verifier_state()
         grader = EasyGrader()
         score = grader.grade(obs, final)
         assert score >= 0.95
@@ -42,7 +42,7 @@ class TestEasyGrader:
     def test_easy_grader_all_wrong(self, env: RecruitmentEnvironment) -> None:
         """All wrong decisions → score <= 0.2."""
         obs = env.reset("easy", seed=42)
-        state = env.state()
+        state = env.verifier_state()
         gt = {c.id: c.ground_truth_label for c in state.candidates}
         wrong = {}
         for cid, label in gt.items():
@@ -54,7 +54,7 @@ class TestEasyGrader:
                 wrong[cid] = "reject"
         _decide_all(env, wrong)
 
-        final = env.state()
+        final = env.verifier_state()
         grader = EasyGrader()
         score = grader.grade(obs, final)
         assert score <= 0.2
@@ -62,7 +62,7 @@ class TestEasyGrader:
     def test_easy_grader_partial(self, env: RecruitmentEnvironment) -> None:
         """~Half correct → score in 0.3-0.7 range."""
         obs = env.reset("easy", seed=42)
-        state = env.state()
+        state = env.verifier_state()
         gt = {c.id: c.ground_truth_label for c in state.candidates}
 
         # First half correct, second half wrong
@@ -75,7 +75,7 @@ class TestEasyGrader:
                 mixed[cid] = "hold"  # may or may not be correct
         _decide_all(env, mixed)
 
-        final = env.state()
+        final = env.verifier_state()
         grader = EasyGrader()
         score = grader.grade(obs, final)
         assert 0.3 <= score <= 0.7
@@ -88,10 +88,10 @@ class TestGraderDeterminism:
         scores = []
         for _ in range(3):
             obs = env.reset("easy", seed=42)
-            state = env.state()
+            state = env.verifier_state()
             gt = {c.id: c.ground_truth_label for c in state.candidates}
             _decide_all(env, gt)
-            final = env.state()
+            final = env.verifier_state()
             scores.append(grader.grade(obs, final))
 
         assert scores[0] == scores[1] == scores[2]
@@ -106,13 +106,13 @@ class TestGraderRange:
 
         for i in range(100):
             obs = env.reset("easy", seed=i)
-            state = env.state()
+            state = env.verifier_state()
             random_decisions = {
                 c.id: choices[int(rng.integers(0, 3))]
                 for c in state.candidates
             }
             _decide_all(env, random_decisions)
-            final = env.state()
+            final = env.verifier_state()
             score = grader.grade(obs, final)
             assert 0.0 <= score <= 1.0, f"seed={i}: score {score} out of range"
 
@@ -131,28 +131,28 @@ class TestHardGrader:
 
         # Shortlist everyone
         obs_all = env.reset("hard", seed=42)
-        state_all = env.state()
+        state_all = env.verifier_state()
         for c in state_all.candidates:
             env.step(MakeDecisionAction(candidate_id=c.id, decision="shortlist"))
-        final_all = env.state()
+        final_all = env.verifier_state()
         score_all = grader.grade(obs_all, final_all)
 
         # Shortlist no one (all hold)
         obs_none = env.reset("hard", seed=42)
-        state_none = env.state()
+        state_none = env.verifier_state()
         for c in state_none.candidates:
             env.step(MakeDecisionAction(candidate_id=c.id, decision="hold"))
-        final_none = env.state()
+        final_none = env.verifier_state()
         score_none = grader.grade(obs_none, final_none)
 
         # Perfect shortlist only
         obs_perf = env.reset("hard", seed=42)
-        state_perf = env.state()
+        state_perf = env.verifier_state()
         gt = {c.id: c.ground_truth_label for c in state_perf.candidates}
         for cid, label in gt.items():
             decision = "shortlist" if label == "shortlist" else "reject"
             env.step(MakeDecisionAction(candidate_id=cid, decision=decision))
-        final_perf = env.state()
+        final_perf = env.verifier_state()
         score_perf = grader.grade(obs_perf, final_perf)
 
         # F1 assertions:
@@ -181,7 +181,7 @@ class TestHardGrader:
             if done:
                 break
 
-        final = env.state()
+        final = env.verifier_state()
         score = grader.grade(obs, final)
         # No shortlists → F1 = 0.0
         assert score < 0.1

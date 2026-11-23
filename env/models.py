@@ -191,21 +191,6 @@ class CheckPlatformAction(BaseModel):
     )
 
 
-class ScoreDimensionAction(BaseModel):
-    """Record the agent's assessment score for a candidate dimension."""
-
-    type: Literal["score_dimension"] = Field(
-        default="score_dimension", description="Action discriminator"
-    )
-    candidate_id: str = Field(description="Target candidate identifier")
-    dimension: Literal["technical", "experience", "growth"] = Field(
-        description="Dimension being scored"
-    )
-    score: float = Field(
-        ge=0.0, le=1.0, description="Agent-assigned score in [0.0, 1.0]"
-    )
-
-
 class MakeDecisionAction(BaseModel):
     """Terminal shortlist / hold / reject decision for a candidate."""
 
@@ -222,7 +207,6 @@ Action = Annotated[
     Union[
         ReadResumeSectionAction,
         CheckPlatformAction,
-        ScoreDimensionAction,
         MakeDecisionAction,
     ],
     Field(discriminator="type"),
@@ -250,15 +234,14 @@ class Observation(BaseModel):
     )
     revealed_data: dict[str, Any] = Field(
         default_factory=dict,
-        description="candidate_id → data revealed so far (resume sections, platform stats)",
+        description=(
+            "candidate_id → {'resume_sections': {section: ResumeSection}, "
+            "'platforms': {platform: stats}} with the values revealed so far"
+        ),
     )
     decisions_made: dict[str, str] = Field(
         default_factory=dict,
         description="candidate_id → decision string for candidates already decided",
-    )
-    scores_recorded: dict[str, dict[str, float]] = Field(
-        default_factory=dict,
-        description="candidate_id → {dimension: score} for scores recorded so far",
     )
     done: bool = Field(
         default=False, description="Whether the episode has ended"
@@ -271,29 +254,23 @@ class Observation(BaseModel):
 
 
 class Reward(BaseModel):
-    """Reward signal returned alongside an observation."""
+    """Reward signal returned alongside an observation.
+
+    The reward is sparse: every step before the last earns 0.0, and the
+    terminal step earns the task grader's score. ``cumulative_reward`` is the
+    running sum, so on the last step it equals the episode score that
+    ``/grader`` reports.
+    """
 
     step_reward: float = Field(
         default=0.0, description="Reward attributed to this single step"
     )
     cumulative_reward: float = Field(
-        default=0.0, description="Total reward accumulated so far in the episode"
-    )
-    fairness_penalty: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Penalty in [0, 1] for biased shortlisting patterns",
-    )
-    accuracy_bonus: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Bonus in [0, 1] for decisions matching ground truth",
+        default=0.0, description="Sum of step rewards so far in the episode"
     )
     breakdown: dict[str, float] = Field(
         default_factory=dict,
-        description="Optional per-component breakdown of the reward",
+        description="Terminal step only: the score and its components",
     )
 
 
@@ -303,7 +280,12 @@ class Reward(BaseModel):
 
 
 class EpisodeState(BaseModel):
-    """Full internal state of the environment."""
+    """Full internal state of the environment: the verifier's view.
+
+    Holds every candidate's ground-truth label and unrevealed statistics.
+    Never return it to an agent during an episode; agents see
+    ``Observation`` and ``PublicState``.
+    """
 
     task_id: str = Field(description="Current task identifier")
     seed: int = Field(description="RNG seed used for this episode")
@@ -328,10 +310,6 @@ class EpisodeState(BaseModel):
         default_factory=dict,
         description="candidate_id → decision string",
     )
-    scores_recorded: dict[str, dict[str, float]] = Field(
-        default_factory=dict,
-        description="candidate_id → {dimension: score}",
-    )
     is_done: bool = Field(
         default=False,
         description="Whether the episode has ended",
@@ -339,4 +317,33 @@ class EpisodeState(BaseModel):
     episode_score: float | None = Field(
         default=None,
         description="Final episode score in [0, 1], set when episode ends",
+    )
+
+
+class PublicState(BaseModel):
+    """Episode state an agent may see: no candidate profiles, no ground truth."""
+
+    task_id: str = Field(description="Current task identifier")
+    seed: int = Field(description="RNG seed used for this episode")
+    step_number: int = Field(description="Current step index (0-based)")
+    max_steps: int = Field(description="Step budget for this episode")
+    job_description: JobDescription = Field(
+        description="The job description for this episode"
+    )
+    candidates_summary: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="List of {'id': ..., 'name': ...}",
+    )
+    revealed_data: dict[str, Any] = Field(
+        default_factory=dict,
+        description="candidate_id → values revealed so far (same shape as Observation)",
+    )
+    decisions_made: dict[str, str] = Field(
+        default_factory=dict,
+        description="candidate_id → decision string",
+    )
+    is_done: bool = Field(description="Whether the episode has ended")
+    episode_score: float | None = Field(
+        default=None,
+        description="Episode score in [0, 1], set when the episode ends",
     )

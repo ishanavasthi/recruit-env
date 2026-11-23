@@ -7,7 +7,6 @@ from env.models import (
     CheckPlatformAction,
     MakeDecisionAction,
     ReadResumeSectionAction,
-    ScoreDimensionAction,
 )
 
 
@@ -46,7 +45,6 @@ class TestReset:
         assert len(obs.candidates_summary) == 10
         assert obs.revealed_data == {}
         assert obs.decisions_made == {}
-        assert obs.scores_recorded == {}
         assert obs.done is False
 
     def test_reset_invalid_task(self, env: RecruitmentEnvironment) -> None:
@@ -62,14 +60,14 @@ class TestReset:
 
 class TestStep:
     def test_step_read_resume(self, env: RecruitmentEnvironment) -> None:
-        """ReadResumeSectionAction reveals data and earns step reward."""
+        """ReadResumeSectionAction reveals data; the reward is sparse (0.0)."""
         obs = env.reset("easy", seed=42)
         cid = obs.candidates_summary[0]["id"]
 
         action = ReadResumeSectionAction(candidate_id=cid, section="education")
         obs, reward, done, info = env.step(action)
 
-        assert reward.step_reward == 0.02
+        assert reward.step_reward == 0.0
         assert cid in obs.revealed_data
         assert "education" in obs.revealed_data[cid]["resume_sections"]
         assert info.get("section_found") is True
@@ -83,38 +81,26 @@ class TestStep:
         action = CheckPlatformAction(candidate_id=cid, platform="github")
         obs, reward, done, info = env.step(action)
 
-        assert reward.step_reward == 0.03
+        assert reward.step_reward == 0.0
         assert "github" in obs.revealed_data[cid]["platforms"]
         gh = info["data"]
         for key in ("repos", "top_languages", "commit_streak_days",
                      "stars_received", "contributions_last_year"):
             assert key in gh
 
-    def test_step_repeat_action_no_extra_reward(
+    def test_step_repeat_action_reveals_nothing(
         self, env: RecruitmentEnvironment
     ) -> None:
-        """Repeating the same read gives 0.0 step reward."""
+        """Repeating the same read reveals nothing new."""
         obs = env.reset("easy", seed=42)
         cid = obs.candidates_summary[0]["id"]
         action = ReadResumeSectionAction(candidate_id=cid, section="education")
 
-        env.step(action)  # first time: 0.02
-        _, reward2, _, _ = env.step(action)  # repeat: 0.0
+        env.step(action)
+        _, reward2, _, info = env.step(action)
 
         assert reward2.step_reward == 0.0
-
-    def test_step_score_dimension(self, env: RecruitmentEnvironment) -> None:
-        """ScoreDimensionAction records the score."""
-        obs = env.reset("easy", seed=42)
-        cid = obs.candidates_summary[0]["id"]
-
-        action = ScoreDimensionAction(
-            candidate_id=cid, dimension="technical", score=0.75,
-        )
-        obs, reward, _, _ = env.step(action)
-
-        assert reward.step_reward == 0.02
-        assert obs.scores_recorded[cid]["technical"] == 0.75
+        assert info["already_revealed"] is True
 
     def test_step_make_decision(self, env: RecruitmentEnvironment) -> None:
         """MakeDecisionAction records the decision with 0.0 step reward."""
@@ -140,7 +126,7 @@ class TestTermination:
     ) -> None:
         """Episode ends when every candidate has a decision."""
         obs = env.reset("easy", seed=42)
-        state = env.state()
+        state = env.verifier_state()
         gt = {c.id: c.ground_truth_label for c in state.candidates}
 
         for cid in list(gt.keys()):
@@ -215,7 +201,7 @@ class TestErrors:
     ) -> None:
         """Stepping after episode is done raises RuntimeError."""
         obs = env.reset("easy", seed=42)
-        state = env.state()
+        state = env.verifier_state()
         for c in state.candidates:
             env.step(MakeDecisionAction(candidate_id=c.id, decision="hold"))
 
@@ -234,15 +220,61 @@ class TestErrors:
 
 class TestState:
     def test_state_returns_deep_copy(self, env: RecruitmentEnvironment) -> None:
-        """Mutating the returned state does not affect the environment."""
+        """Mutating a returned state does not affect the environment."""
         env.reset("easy", seed=42)
-        s1 = env.state()
-        s1.decisions_made["injected"] = "hack"
-        s2 = env.state()
-        assert "injected" not in s2.decisions_made
+        for get in (env.state, env.verifier_state):
+            s1 = get()
+            s1.decisions_made["injected"] = "hack"
+            assert "injected" not in get().decisions_made
 
     def test_state_without_reset_raises(self) -> None:
         """state() on a fresh environment raises ValueError."""
         env = RecruitmentEnvironment()
         with pytest.raises(ValueError, match="No active episode"):
             env.state()
+
+
+# -----------------------------------------------------------------------
+# the observation is the agent's whole view
+# -----------------------------------------------------------------------
+
+
+class TestObservationIsSufficient:
+    def test_revealed_values_are_in_observation(self, env: RecruitmentEnvironment) -> None:
+        obs = env.reset("easy", seed=42)
+        cid = obs.candidates_summary[0]["id"]
+
+        obs, _, _, info = env.step(CheckPlatformAction(candidate_id=cid, platform="leetcode"))
+        assert obs.revealed_data[cid]["platforms"]["leetcode"] == info["data"]
+
+        obs, _, _, info = env.step(ReadResumeSectionAction(candidate_id=cid, section="experience"))
+        assert obs.revealed_data[cid]["resume_sections"]["experience"] == info["data"]
+
+    @pytest.mark.parametrize("task", ["easy", "medium", "hard"])
+    def test_observation_only_policy_plays_every_task(self, task: str) -> None:
+        """A policy that reads nothing but Observation can finish any task."""
+        env = RecruitmentEnvironment()
+        obs = env.reset(task, seed=11)
+        done = False
+        for c in obs.candidates_summary:
+            cid = c["id"]
+            obs, _, done, _ = env.step(CheckPlatformAction(candidate_id=cid, platform="github"))
+            if done:
+                break
+            stars = obs.revealed_data[cid]["platforms"]["github"]["stars_received"]
+            decision = "shortlist" if stars > 200 else "reject" if stars < 20 else "hold"
+            obs, reward, done, _ = env.step(MakeDecisionAction(candidate_id=cid, decision=decision))
+            if done:
+                break
+        while not done:
+            cid = obs.candidates_summary[0]["id"]
+            obs, reward, done, _ = env.step(ReadResumeSectionAction(candidate_id=cid, section="skills"))
+        assert 0.0 <= reward.cumulative_reward <= 1.0
+        assert env.state().episode_score == reward.cumulative_reward
+
+    def test_state_hides_ground_truth(self, env: RecruitmentEnvironment) -> None:
+        env.reset("hard", seed=1)
+        dumped = env.state().model_dump()
+        assert "candidates" not in dumped
+        assert "ground_truth" not in str(dumped)
+        assert env.verifier_state().candidates[0].ground_truth_label in {"shortlist", "hold", "reject"}

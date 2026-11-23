@@ -1,11 +1,13 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "recruitenv"
-version = "1.0.0"
-description = "OpenEnv RL environment for candidate pipeline triage"
+version = "2.0.0"
+description = "RL environment and benchmark for candidate pipeline triage"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi",

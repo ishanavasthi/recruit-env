@@ -51,31 +51,17 @@ def format_candidates_summary(candidates: list[dict[str, str]]) -> str:
 
 
 def format_revealed_data(revealed: dict[str, Any]) -> str:
-    """Format incrementally revealed candidate info as readable text."""
+    """Format revealed candidate data (values included) as readable text."""
     if not revealed:
         return "  (nothing revealed yet)"
 
     sections = []
     for cid, data in revealed.items():
         parts = [f"  [{cid}]"]
-
-        resume_sections = data.get("resume_sections", [])
-        if resume_sections:
-            parts.append(f"    Resume sections read: {', '.join(resume_sections)}")
-
-        platforms = data.get("platforms", [])
-        if platforms:
-            parts.append(f"    Platforms checked: {', '.join(platforms)}")
-
-        # Include any nested data (platform stats, resume content)
-        for key, val in data.items():
-            if key in ("resume_sections", "platforms"):
-                continue
-            if isinstance(val, dict):
-                parts.append(f"    {key}: {json.dumps(val, default=str)}")
-            elif val:
-                parts.append(f"    {key}: {val}")
-
+        for name, section in data.get("resume_sections", {}).items():
+            parts.append(f"    resume.{name}: {json.dumps(section, default=str)}")
+        for platform, stats in data.get("platforms", {}).items():
+            parts.append(f"    {platform}: {json.dumps(stats, default=str)}")
         sections.append("\n".join(parts))
 
     return "\n".join(sections)
@@ -97,8 +83,7 @@ def build_system_prompt(obs: dict) -> str:
         f"\n"
         f'1. {{"type": "read_resume_section", "candidate_id": "...", "section": "education|experience|skills"}}\n'
         f'2. {{"type": "check_platform", "candidate_id": "...", "platform": "github|leetcode|kaggle"}}\n'
-        f'3. {{"type": "score_dimension", "candidate_id": "...", "dimension": "technical|experience|growth", "score": 0.0-1.0}}\n'
-        f'4. {{"type": "make_decision", "candidate_id": "...", "decision": "shortlist|hold|reject"}}\n'
+        f'3. {{"type": "make_decision", "candidate_id": "...", "decision": "shortlist|hold|reject"}}\n'
         f"\n"
         f"STRICT RULES — follow exactly:\n"
         f"\n"
@@ -111,7 +96,6 @@ def build_system_prompt(obs: dict) -> str:
         f"- Check MAXIMUM 2 signals per candidate (github + leetcode only)\n"
         f"- Immediately after 2 checks: make_decision for that candidate\n"
         f"- Never check resume unless you have 0 other signals\n"
-        f"- Never score_dimension — skip it entirely, go straight to make_decision\n"
         f"\n"
         f"DECISION RULES:\n"
         f"- You MUST make a decision after every 1-2 checks\n"
@@ -133,13 +117,9 @@ def build_observation_message(obs: dict) -> str:
     candidates = format_candidates_summary(obs["candidates_summary"])
     revealed = format_revealed_data(obs.get("revealed_data", {}))
     decisions = obs.get("decisions_made", {})
-    scores = obs.get("scores_recorded", {})
 
     decisions_str = (
         json.dumps(decisions, indent=2) if decisions else "(none yet)"
-    )
-    scores_str = (
-        json.dumps(scores, indent=2) if scores else "(none yet)"
     )
 
     return (
@@ -150,7 +130,6 @@ def build_observation_message(obs: dict) -> str:
         f"What you know so far:\n{revealed}\n"
         f"\n"
         f"Decisions made: {decisions_str}\n"
-        f"Scores recorded: {scores_str}\n"
         f"\n"
         f"What is your next action? Respond with JSON only."
     )
@@ -269,7 +248,6 @@ def _do_step(
     act_detail = (
         action.get("section")
         or action.get("platform")
-        or action.get("dimension")
         or action.get("decision")
         or ""
     )
@@ -306,7 +284,7 @@ def _ask_llm_decision(
         completion = client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=10,
+            max_tokens=512,  # room for reasoning models; output is one word
             temperature=0.0,
         )
         raw = (completion.choices[0].message.content or "").strip().lower()
@@ -322,6 +300,9 @@ def _ask_llm_decision(
 
 def _rule_based_decision(gh_data: dict, lc_data: dict) -> str:
     """Pure rule-based fallback using profile stat thresholds."""
+    if not gh_data and not lc_data:
+        return "hold"  # nothing revealed: no evidence either way
+
     stars = gh_data.get("stars_received", 0)
     repos = gh_data.get("repos", 0)
     contribs = gh_data.get("contributions_last_year", 0)
@@ -385,113 +366,61 @@ def run_task(
     print(f"  Candidates: {n_candidates}")
     print(f"  Step budget: {max_steps}")
 
-    # Decide budget strategy per candidate:
-    #   3 steps: check github + check leetcode + decide  (generous)
-    #   2 steps: check github + decide                   (normal)
-    #   1 step:  decide immediately using github-only     (tight - hard_task)
+    # Budget strategy per candidate:
+    #   full  (>=2.8 steps/candidate): github + leetcode, then decide
+    #   quick (>=1.8):                 github, then decide
+    #   batch (<1.8):                  github while the budget allows, then decide
+    # Every statistic comes from the observation; gathering always costs a step.
     steps_per_candidate = max_steps / n_candidates if n_candidates > 0 else 3
     if steps_per_candidate >= 2.8:
-        mode = "full"       # github + leetcode + decide per candidate
-        checks = 2
+        mode = "full"
     elif steps_per_candidate >= 1.8:
-        mode = "quick"      # github + decide per candidate
-        checks = 1
+        mode = "quick"
     else:
-        mode = "batch"      # Phase 1: github checks, Phase 2: all decides
-        checks = 1
+        mode = "batch"
 
-    print(f"  Steps/candidate: {steps_per_candidate:.1f} -> {mode} mode ({checks} signal{'s' if checks > 1 else ''})")
+    print(f"  Steps/candidate: {steps_per_candidate:.1f} -> {mode} mode")
 
-    # Step 2 — Structured loop
-    #
-    # Strategy depends on budget:
-    #   "full"  (>=2.8 steps/cand): github + leetcode + decide per candidate
-    #   "quick" (>=1.8):            github + decide per candidate
-    #   "batch" (<1.8):             Phase 1: check github for as many as possible
-    #                               Phase 2: decide all using gathered data
     done = False
-    gh_cache: dict[str, dict] = {}
-    lc_cache: dict[str, dict] = {}
+    for i, candidate in enumerate(candidates):
+        if done:
+            break
 
-    if mode == "batch":
-        # --- BATCH MODE (hard_task) ---
-        # Read all candidate stats from /state (free — no step cost),
-        # then spend all steps on decisions only.
-        print(f"  Batch mode: reading stats from /state, then {n_candidates} decisions")
+        cid = candidate["id"]
+        cname = candidate.get("name", "")
+        print(f"\n  --- Candidate {i+1}/{n_candidates}: {cid} ({cname}) ---")
+        undecided = n_candidates - i  # including this candidate
 
-        state_r = http.get(f"{BASE_URL}/state")
-        if state_r.status_code == 200:
-            for c in state_r.json()["candidates"]:
-                gh_cache[c["id"]] = c.get("github", {})
-                lc_cache[c["id"]] = c.get("leetcode", {})
-
-        for i, candidate in enumerate(candidates):
-            if done:
-                break
-            cid = candidate["id"]
-            cname = candidate.get("name", "")
-            print(f"\n  --- Decide {i+1}/{n_candidates}: {cid} ({cname}) ---")
-
-            gh = gh_cache.get(cid, {})
-            lc = lc_cache.get(cid, {})
-            decision = _rule_based_decision(gh, lc)
-            print(f"  [rule-based] Decision: {decision}")
-
-            action = {"type": "make_decision", "candidate_id": cid, "decision": decision}
-            obs, _, done = _do_step(http, action, obs)
-    else:
-        # --- SEQUENTIAL MODE (easy/medium) ---
-        for i, candidate in enumerate(candidates):
-            if done:
-                break
-
-            cid = candidate["id"]
-            cname = candidate.get("name", "")
-            print(f"\n  --- Candidate {i+1}/{n_candidates}: {cid} ({cname}) ---")
-
-            # a. Check GitHub
+        # a. Check GitHub if the budget still leaves a step for every decision
+        if obs["steps_remaining"] > undecided:
             action = {"type": "check_platform", "candidate_id": cid, "platform": "github"}
             obs, _, done = _do_step(http, action, obs)
             if done:
                 break
 
-            # b. Check LeetCode if full mode and budget allows
-            if mode == "full":
-                steps_remaining = obs["steps_remaining"]
-                candidates_left_after = n_candidates - (i + 1)
-                if steps_remaining > candidates_left_after * 2 + 2:
-                    action = {"type": "check_platform", "candidate_id": cid, "platform": "leetcode"}
-                    obs, _, done = _do_step(http, action, obs)
-                    if done:
-                        break
-
-            # c. Fetch stats from /state
-            state_r = http.get(f"{BASE_URL}/state")
-            if state_r.status_code == 200:
-                for c in state_r.json()["candidates"]:
-                    if c["id"] == cid:
-                        gh_cache[cid] = c.get("github", {})
-                        lc_cache[cid] = c.get("leetcode", {})
-                        break
-
-            # d. Decide — LLM if comfortable, else rules
-            gh = gh_cache.get(cid, {})
-            lc = lc_cache.get(cid, {})
-            steps_remaining = obs["steps_remaining"]
-            candidates_remaining = n_candidates - (i + 1)
-            budget_tight = steps_remaining <= candidates_remaining + 2
-
-            if budget_tight:
-                decision = _rule_based_decision(gh, lc)
-                print(f"  [rule-based] Decision: {decision}")
-            else:
-                decision = _ask_llm_decision(client, cid, gh, lc, jd)
-                print(f"  [LLM] Decision: {decision}")
-
-            action = {"type": "make_decision", "candidate_id": cid, "decision": decision}
+        # b. Check LeetCode in full mode if budget allows
+        if mode == "full" and obs["steps_remaining"] > (undecided - 1) * 2 + 2:
+            action = {"type": "check_platform", "candidate_id": cid, "platform": "leetcode"}
             obs, _, done = _do_step(http, action, obs)
             if done:
                 break
+
+        # c. Read what was revealed from the observation
+        platforms = obs.get("revealed_data", {}).get(cid, {}).get("platforms", {})
+        gh = platforms.get("github", {})
+        lc = platforms.get("leetcode", {})
+
+        # d. Decide — LLM if comfortable, else rules
+        budget_tight = mode == "batch" or obs["steps_remaining"] <= (undecided - 1) + 2
+        if budget_tight or not gh:
+            decision = _rule_based_decision(gh, lc)
+            print(f"  [rule-based] Decision: {decision}")
+        else:
+            decision = _ask_llm_decision(client, cid, gh, lc, jd)
+            print(f"  [LLM] Decision: {decision}")
+
+        action = {"type": "make_decision", "candidate_id": cid, "decision": decision}
+        obs, _, done = _do_step(http, action, obs)
 
     # Step 4 — Grade
     r = http.post(f"{BASE_URL}/grader")
@@ -535,46 +464,30 @@ def _print_candidate_summary(
     decisions = breakdown.get("decisions", {})
     ground_truth = breakdown.get("ground_truth", {})
     revealed = final_obs.get("revealed_data", {})
-    scores_recorded = final_obs.get("scores_recorded", {})
 
     if not decisions and not ground_truth:
         return
 
-    print(f"\n  {'='*115}")
+    print(f"\n  {'='*85}")
     print(f"  CANDIDATE BREAKDOWN")
-    print(f"  {'='*115}")
+    print(f"  {'='*85}")
     print(
         f"  {'Candidate':<18}"
         f"{'Signals Checked':<40}"
-        f"{'Dims Scored':<30}"
         f"{'Decision':<12}"
         f"{'Truth':<10}"
         f"{'Match':>5}"
     )
-    print(f"  {'-'*115}")
+    print(f"  {'-'*85}")
 
     all_cids = sorted(set(list(ground_truth.keys()) + list(decisions.keys())))
     match_count = 0
     for cid in all_cids:
         # Signals gathered
         cid_data = revealed.get(cid, {})
-        platforms = cid_data.get("platforms", [])
-        sections = cid_data.get("resume_sections", [])
-        signals = []
-        if platforms:
-            signals.extend(platforms)
-        if sections:
-            signals.extend(f"resume:{s}" for s in sections)
+        signals = list(cid_data.get("platforms", {}))
+        signals.extend(f"resume:{s}" for s in cid_data.get("resume_sections", {}))
         signals_str = ", ".join(signals) if signals else "(none)"
-
-        # Dimensions scored
-        cid_scores = scores_recorded.get(cid, {})
-        if cid_scores:
-            dims_str = ", ".join(
-                f"{d}={v:.2f}" for d, v in sorted(cid_scores.items())
-            )
-        else:
-            dims_str = "(none)"
 
         decision = decisions.get(cid, "(undecided)")
         truth = ground_truth.get(cid, "?")
@@ -586,15 +499,14 @@ def _print_candidate_summary(
         print(
             f"  {cid:<18}"
             f"{signals_str:<40}"
-            f"{dims_str:<30}"
             f"{decision:<12}"
             f"{truth:<10}"
             f"{match_str:>5}"
         )
 
-    print(f"  {'-'*115}")
+    print(f"  {'-'*85}")
     print(f"  Total: {match_count}/{len(all_cids)} correct")
-    print(f"  {'='*115}")
+    print(f"  {'='*85}")
 
 
 # ---------------------------------------------------------------------------
@@ -610,13 +522,14 @@ def print_results_table(
     avg = sum(r["score"] for r in results.values()) / len(results) if results else 0.0
 
     w = 54
+    thin = "\u2500" * w
     print()
     print(f"\u2554{'═' * w}\u2557")
     print(f"\u2551{'RecruitEnv Baseline Results':^{w}}\u2551")
     print(f"\u2551{f'Model: {model}':^{w}}\u2551")
     print(f"\u2560{'═' * w}\u2563")
     print(f"\u2551 {'Task':<16}{'Score':>8}{'Steps Used':>14}{'Status':>12}   \u2551")
-    print(f"\u2551{'\u2500' * w}\u2551")
+    print(f"\u2551{thin}\u2551")
 
     for label, data in results.items():
         score = data["score"]
@@ -626,7 +539,7 @@ def print_results_table(
         status = "PASS" if score >= threshold else "FAIL"
         print(f"\u2551 {label:<16}{score:>8.4f}{steps:>10d}/{mx:<4d}{status:>10}   \u2551")
 
-    print(f"\u2551{'\u2500' * w}\u2551")
+    print(f"\u2551{thin}\u2551")
     print(f"\u2551 {'Average':<16}{avg:>8.4f}{'':>14}{'':>12}   \u2551")
     print(f"\u255a{'═' * w}\u255d")
 

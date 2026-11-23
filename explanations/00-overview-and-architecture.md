@@ -2,7 +2,7 @@
 
 ## What the Project Is (One Paragraph)
 
-RecruitEnv is a **Reinforcement Learning environment** (not an agent, not a model — an *environment* that agents train against). It is built to comply with the **OpenEnv specification**, a standard API for RL environments published by Meta + Hugging Face. The "task" it simulates is **candidate pipeline triage**: an AI agent is given a job description and a pool of synthetic developer profiles, and it must spend a limited "step budget" gathering signals (GitHub stats, LeetCode stats, resume sections) and making shortlist / hold / reject decisions on each candidate. It exposes a REST API (FastAPI on port 7860), runs in a Docker container, deploys to Hugging Face Spaces, and ships with three difficulty-graded tasks, deterministic graders, a fairness penalty, and a baseline agent.
+RecruitEnv is a **Reinforcement Learning environment** (not an agent, not a model — an *environment* that agents train against). It is built to comply with the **OpenEnv specification**, an open standard API for RL environments. The "task" it simulates is **candidate pipeline triage**: an AI agent is given a job description and a pool of synthetic developer profiles, and it must spend a limited "step budget" gathering signals (GitHub stats, LeetCode stats, resume sections) and making shortlist / hold / reject decisions on each candidate. It exposes a REST API (FastAPI on port 7860), runs in a Docker container, deploys to Hugging Face Spaces, and ships with three difficulty-graded tasks, deterministic graders, a fairness penalty, and a baseline agent.
 
 ## Why It Matters (the "selling pitch" for the interview)
 

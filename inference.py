@@ -1,48 +1,50 @@
 """
-RecruitEnv Inference Script
-===================================
-MANDATORY env vars:
-    API_BASE_URL       The API endpoint for the LLM.
-    MODEL_NAME         The model identifier to use for inference.
-    HF_TOKEN           Your Hugging Face / API key.
-    LOCAL_IMAGE_NAME   Docker image name (optional).
+RecruitEnv LLM inference script
+===============================
+
+Plays one episode against a running RecruitEnv server with an
+OpenAI-compatible chat model, then reports the score from ``POST /grader``.
+
+Environment variables:
+    API_BASE_URL   OpenAI-compatible endpoint (default: Hugging Face router)
+    MODEL_NAME     Model identifier (default: gpt-4o-mini)
+    HF_TOKEN       API key (or API_KEY)
+    ENV_URL        RecruitEnv server URL (default: http://localhost:7860)
+    TASK           Task id: easy | medium | hard (default: easy)
+    SEED           Episode seed (default: 42)
+    MAX_TOKENS     Completion token cap per call (default: 512)
+
+Output lines: one [START], one [STEP] per environment step, one [END]
+with the grader's score.
 """
+
+from __future__ import annotations
 
 import asyncio
 import json
 import os
 import re
-from typing import List, Optional
+from collections.abc import Callable
+from typing import Any, Optional
 
 import httpx
-from openai import OpenAI
-
-# ---------------------------------------------------------------------------
-# Environment variables (match sample_inference.py pattern exactly)
-# ---------------------------------------------------------------------------
 
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
 MODEL_NAME = os.getenv("MODEL_NAME") or "gpt-4o-mini"
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
-IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")  # NO default
+ENV_URL = os.getenv("ENV_URL") or "http://localhost:7860"
+TASK_NAME = os.getenv("TASK") or "easy"
+SEED = int(os.getenv("SEED") or "42")
 
-# Environment server URL (our HF Space — plain REST, not WebSocket)
-ENV_URL = "https://heyavasthi-recruitenv.hf.space"
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-TASK_NAME = "easy"
 BENCHMARK = "recruitenv"
-MAX_STEPS = 40
-MAX_TOTAL_REWARD = 1.0
-SUCCESS_SCORE_THRESHOLD = 0.75
 TEMPERATURE = 0.1
-MAX_TOKENS = 200
+MAX_TOKENS = int(os.getenv("MAX_TOKENS") or "512")
+
+# An action chooser maps (observation, history) to one action dict.
+ChooseAction = Callable[[dict, list[str]], dict]
 
 # ---------------------------------------------------------------------------
-# Logging (inline, matching required stdout format exactly)
+# Logging
 # ---------------------------------------------------------------------------
 
 
@@ -59,7 +61,7 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
     )
 
 
-def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+def log_end(success: bool, steps: int, score: float, rewards: list[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(
         f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
@@ -68,30 +70,33 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 
 
 # ---------------------------------------------------------------------------
-# HTTP Environment Client (plain REST — no WebSocket)
+# HTTP environment client
 # ---------------------------------------------------------------------------
 
 
 class EnvHTTPClient:
-    """Minimal async HTTP client for our REST API endpoints."""
+    """Minimal async HTTP client for the RecruitEnv REST API."""
 
-    def __init__(self, base_url: str) -> None:
-        self.base_url = base_url.rstrip("/")
-        self._client = httpx.AsyncClient(timeout=60.0)
-
-    async def reset(self, task_id: str = "easy", seed: int = 42) -> dict:
-        r = await self._client.post(
-            f"{self.base_url}/reset",
-            json={"task_id": task_id, "seed": seed},
+    def __init__(self, base_url: str, transport: httpx.AsyncBaseTransport | None = None) -> None:
+        self._client = httpx.AsyncClient(
+            base_url=base_url.rstrip("/"), timeout=60.0, transport=transport,
         )
+
+    async def reset(self, task_id: str, seed: int) -> dict:
+        r = await self._client.post("/reset", json={"task_id": task_id, "seed": seed})
         r.raise_for_status()
         return r.json()
 
-    async def step(self, action: dict) -> dict:
-        r = await self._client.post(
-            f"{self.base_url}/step",
-            json=action,
-        )
+    async def step(self, action: dict) -> tuple[dict | None, str | None]:
+        """Return (result, None) on success or (None, error) for a rejected action."""
+        r = await self._client.post("/step", json=action)
+        if r.status_code in (400, 422):
+            return None, _error_detail(r)
+        r.raise_for_status()
+        return r.json(), None
+
+    async def grade(self) -> dict:
+        r = await self._client.post("/grader")
         r.raise_for_status()
         return r.json()
 
@@ -99,35 +104,47 @@ class EnvHTTPClient:
         await self._client.aclose()
 
 
+def _error_detail(r: httpx.Response) -> str:
+    try:
+        detail = r.json().get("detail", r.text)
+    except ValueError:
+        detail = r.text
+    return re.sub(r"\s+", " ", json.dumps(detail) if not isinstance(detail, str) else detail)[:200]
+
+
 # ---------------------------------------------------------------------------
 # Prompts
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """You are a hiring agent evaluating candidates for a job.
-You must review candidate profiles and make shortlisting decisions.
+SYSTEM_PROMPT = """You are a hiring agent screening candidates for one job.
+Each step you take ONE action. Gathering information costs a step, and the
+episode ends when every candidate has a decision or the step budget runs out.
+An undecided candidate earns no credit, so leave enough steps to decide everyone.
 
-Available actions (respond with ONE JSON object only, no explanation):
+Actions (respond with ONE JSON object only, no explanation, no markdown):
 1. {"type": "check_platform", "candidate_id": "...", "platform": "github|leetcode|kaggle"}
-2. {"type": "read_resume_section", "candidate_id": "...", "section": "skills|experience|education"}
+2. {"type": "read_resume_section", "candidate_id": "...", "section": "education|experience|skills"}
 3. {"type": "make_decision", "candidate_id": "...", "decision": "shortlist|hold|reject"}
 
-Rules:
-- Check github + leetcode for each candidate (max 2 checks per candidate)
-- Immediately make_decision after checking signals
-- shortlist: stars>200 AND solved>250
-- reject: stars<20 AND solved<100
-- hold: everything else
-- Respond with ONLY valid JSON. No markdown. No explanation."""
+Decisions are final. Shortlist only the strongest candidates for the role,
+reject clearly weak ones, and hold the rest. Base each decision on the data
+you have revealed."""
 
 
-def build_user_prompt(step: int, observation: dict, history: List[str]) -> str:
-    history_block = "\n".join(history[-4:]) if history else "None"
+def build_user_prompt(step: int, observation: dict, history: list[str]) -> str:
+    history_block = "\n".join(history[-6:]) if history else "None"
+    jd = observation.get("job_description", {})
+    undecided = [
+        c["id"] for c in observation.get("candidates_summary", [])
+        if c["id"] not in observation.get("decisions_made", {})
+    ]
     return (
-        f"Step {step}:\n"
-        f"Steps remaining: {observation.get('steps_remaining', 0)}\n"
-        f"Candidates: {observation.get('candidates_summary', [])}\n"
-        f"Revealed data: {observation.get('revealed_data', {})}\n"
-        f"Decisions made: {observation.get('decisions_made', {})}\n"
+        f"Step {step}. Steps remaining: {observation.get('steps_remaining', 0)}. "
+        f"Undecided candidates: {len(undecided)}.\n"
+        f"Job: {json.dumps(jd, separators=(',', ':'))}\n"
+        f"Candidates: {json.dumps(observation.get('candidates_summary', []), separators=(',', ':'))}\n"
+        f"Revealed data: {json.dumps(observation.get('revealed_data', {}), separators=(',', ':'))}\n"
+        f"Decisions made: {json.dumps(observation.get('decisions_made', {}))}\n"
         f"Previous steps:\n{history_block}\n\n"
         f"What is your next action? Respond with JSON only."
     )
@@ -138,109 +155,124 @@ def build_user_prompt(step: int, observation: dict, history: List[str]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def get_model_action(
-    client: OpenAI, step: int, observation: dict, history: List[str]
-) -> dict:
-    """Call the LLM and extract a valid action JSON."""
-    user_prompt = build_user_prompt(step, observation, history)
+def parse_action(text: str) -> dict | None:
+    """Extract one action object from model output, or None."""
+    text = re.sub(r"```json|```", "", text or "").strip()
     try:
-        completion = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=TEMPERATURE,
-            max_tokens=MAX_TOKENS,
-            stream=False,
-        )
-        text = (completion.choices[0].message.content or "").strip()
-        # Strip markdown fences
-        text = re.sub(r"```json|```", "", text).strip()
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return parsed
+    except (json.JSONDecodeError, TypeError):
+        pass
+    match = re.search(r"\{[^{}]+\}", text, re.DOTALL)
+    if match:
         try:
-            parsed = json.loads(text)
-            if isinstance(parsed, dict):
-                return parsed
-        except (json.JSONDecodeError, TypeError):
+            return json.loads(match.group())
+        except json.JSONDecodeError:
             pass
-        # Extract first {...} block
-        match = re.search(r"\{[^{}]+\}", text, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group())
-            except json.JSONDecodeError:
-                pass
-    except Exception as exc:
-        print(f"[DEBUG] Model request failed: {exc}", flush=True)
-    # Fallback: hold for first undecided candidate
-    decided = set(observation.get("decisions_made", {}).keys())
+    return None
+
+
+def fallback_action(observation: dict) -> dict:
+    """Hold the first undecided candidate."""
+    decided = set(observation.get("decisions_made", {}))
     for c in observation.get("candidates_summary", []):
         if c["id"] not in decided:
             return {"type": "make_decision", "candidate_id": c["id"], "decision": "hold"}
-    return {"type": "make_decision", "candidate_id": "candidate_001", "decision": "hold"}
+    first = observation["candidates_summary"][0]["id"]
+    return {"type": "check_platform", "candidate_id": first, "platform": "github"}
+
+
+def make_llm_chooser(client: Any, model: str) -> ChooseAction:
+    """Build an action chooser backed by an OpenAI-compatible chat client."""
+    def choose(observation: dict, history: list[str]) -> dict:
+        step = observation.get("step_number", 0) + 1
+        try:
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": build_user_prompt(step, observation, history)},
+                ],
+                temperature=TEMPERATURE,
+                max_tokens=MAX_TOKENS,
+                stream=False,
+            )
+            text = completion.choices[0].message.content or ""
+            action = parse_action(text)
+            if action is not None:
+                return action
+            print(f"[DEBUG] Unparseable model output: {text[:200]!r}", flush=True)
+        except Exception as exc:  # network or provider errors: fall back, keep playing
+            print(f"[DEBUG] Model request failed: {exc}", flush=True)
+        return fallback_action(observation)
+
+    return choose
 
 
 # ---------------------------------------------------------------------------
-# Main
+# Episode loop
 # ---------------------------------------------------------------------------
+
+
+async def run_episode(
+    env: EnvHTTPClient, choose: ChooseAction, task: str, seed: int,
+) -> dict[str, Any]:
+    """Play one episode and return the grader's result plus step rewards."""
+    observation = await env.reset(task_id=task, seed=seed)
+    history: list[str] = []
+    rewards: list[float] = []
+    # Rejected actions do not consume budget; cap them so a confused model
+    # cannot loop forever.
+    rejections_left = 2 * observation["steps_remaining"]
+
+    while not observation.get("done", False):
+        action = choose(observation, history)
+        result, error = await env.step(action)
+        if error is not None:
+            rejections_left -= 1
+            history.append(f"{json.dumps(action)} -> rejected: {error}")
+            if rejections_left <= 0:
+                action = fallback_action(observation)
+                result, error = await env.step(action)
+                if error is not None:
+                    raise RuntimeError(f"fallback action rejected: {error}")
+            else:
+                print(f"[DEBUG] action rejected: {error}", flush=True)
+                continue
+
+        observation = result["observation"]
+        reward = float(result["reward"]["step_reward"])
+        done = bool(result["done"])
+        rewards.append(reward)
+        log_step(step=observation["step_number"], action=json.dumps(action), reward=reward, done=done, error=None)
+        history.append(f"Step {observation['step_number']}: {json.dumps(action)}")
+
+    grade = await env.grade()
+    return {
+        "score": grade["score"],
+        "success": bool(grade["breakdown"].get("success", False)),
+        "steps": observation["step_number"],
+        "rewards": rewards,
+        "grade": grade,
+    }
 
 
 async def main() -> None:
-    # LLM client — uses API_BASE_URL (the LLM router endpoint)
+    from openai import OpenAI
+
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
-
-    # Environment client — plain HTTP to our HF Space REST API
     env = EnvHTTPClient(base_url=ENV_URL)
-
-    history: List[str] = []
-    rewards: List[float] = []
-    steps_taken = 0
-    score = 0.0
-    success = False
+    result: dict[str, Any] = {"score": 0.0, "success": False, "steps": 0, "rewards": []}
 
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
-
     try:
-        observation = await env.reset(task_id=TASK_NAME, seed=42)
-        last_reward = 0.0
-
-        for step in range(1, MAX_STEPS + 1):
-            if observation.get("done", False):
-                break
-
-            action = get_model_action(client, step, observation, history)
-            result = await env.step(action)
-
-            observation = result.get("observation", {})
-            reward = result.get("reward", {})
-            if isinstance(reward, dict):
-                reward = reward.get("step_reward", 0.0)
-            done = result.get("done", False)
-
-            rewards.append(reward)
-            steps_taken = step
-            last_reward = reward
-            error = None
-
-            log_step(step=step, action=str(action), reward=reward, done=done, error=error)
-            history.append(f"Step {step}: {action} -> reward {reward:+.2f}")
-
-            if done:
-                break
-
-        score = sum(rewards) / MAX_TOTAL_REWARD if MAX_TOTAL_REWARD > 0 else 0.0
-        score = min(max(score, 0.0), 1.0)
-        success = score >= SUCCESS_SCORE_THRESHOLD
-
+        result = await run_episode(env, make_llm_chooser(client, MODEL_NAME), TASK_NAME, SEED)
     except Exception as exc:
         print(f"[DEBUG] Unhandled exception: {exc}", flush=True)
-
     finally:
-        try:
-            await env.close()
-        except Exception as e:
-            print(f"[DEBUG] env.close() error: {e}", flush=True)
-        log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+        await env.close()
+        log_end(success=result["success"], steps=result["steps"], score=result["score"], rewards=result["rewards"])
 
 
 if __name__ == "__main__":

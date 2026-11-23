@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import copy
 import threading
 from typing import Any
 
-from env.fairness import FairnessChecker
 from env.models import (
     Action,
     CandidateProfile,
@@ -13,33 +13,38 @@ from env.models import (
     EpisodeState,
     MakeDecisionAction,
     Observation,
+    PublicState,
     ReadResumeSectionAction,
     Reward,
-    ScoreDimensionAction,
 )
 from env.profile_factory import ProfileFactory
-from env.rewards import RewardCalculator
 
 
-def _load_task_registry() -> dict:
+def _load_registries() -> tuple[dict, dict]:
     """Lazy import to break the env ↔ tasks circular dependency."""
-    from tasks import TASK_REGISTRY
-    return dict(TASK_REGISTRY)
+    from tasks import GRADER_REGISTRY, TASK_REGISTRY
+    return dict(TASK_REGISTRY), dict(GRADER_REGISTRY)
 
 
 class RecruitmentEnvironment:
-    """OpenEnv-compliant RL environment for candidate pipeline triage.
+    """RL environment for candidate pipeline triage.
 
     Deterministic: reset(seed=42) always produces identical state.
     Thread-safe: all public methods are guarded by a lock.
+
+    Scoring: the reward is sparse. Every step before the last earns 0.0; the
+    terminal step earns the task grader's score, which is also the episode
+    score and what ``grade_report()`` returns.
+
+    Agents see ``Observation`` (from ``reset``/``step``) and ``state()``.
+    ``verifier_state()`` holds the ground truth and is for graders and tests.
     """
 
     def __init__(self) -> None:
         self._state: EpisodeState | None = None
+        self._initial_obs: Observation | None = None
         self._factory = ProfileFactory()
-        self._reward_calc = RewardCalculator()
-        self._fairness = FairnessChecker()
-        self._task_registry = _load_task_registry()
+        self._task_registry, self._grader_registry = _load_registries()
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -84,12 +89,13 @@ class RecruitmentEnvironment:
                 candidates_summary=summary,
                 revealed_data={},
                 decisions_made={},
-                scores_recorded={},
                 is_done=False,
                 episode_score=None,
             )
 
-            return self._build_observation()
+            obs = self._build_observation()
+            self._initial_obs = obs.model_copy(deep=True)
+            return obs
 
     # ------------------------------------------------------------------
     # step
@@ -130,24 +136,19 @@ class RecruitmentEnvironment:
                 f"'{s.decisions_made[cid]}'"
             )
 
-        # 1. Compute step reward BEFORE mutating state (novelty check)
-        step_reward = self._reward_calc.calculate_step_reward(action, s)
-
-        # 2. Execute action (mutate state)
+        # 1. Execute action (mutate state)
         info: dict[str, Any] = {}
         if isinstance(action, ReadResumeSectionAction):
             self._exec_read_resume(action, s, info)
         elif isinstance(action, CheckPlatformAction):
             self._exec_check_platform(action, s, info)
-        elif isinstance(action, ScoreDimensionAction):
-            self._exec_score_dimension(action, s, info)
         elif isinstance(action, MakeDecisionAction):
             self._exec_make_decision(action, s, info)
 
-        # 3. Increment step counter
+        # 2. Increment step counter
         s.step_number += 1
 
-        # 4. Check terminal conditions
+        # 3. Check terminal conditions
         all_decided = len(s.decisions_made) == len(s.candidates)
         budget_exhausted = s.step_number >= s.max_steps
         s.is_done = all_decided or budget_exhausted
@@ -157,41 +158,17 @@ class RecruitmentEnvironment:
             else None
         )
 
-        # 5. Build reward
+        # 4. Build reward: sparse, the grader's score on the terminal step
         if s.is_done:
-            terminal = self._reward_calc.calculate_terminal_reward(
-                s.decisions_made, s.candidates, s.job_description,
-            )
-            gt_map = {c.id: c.ground_truth_label for c in s.candidates}
-            correct = sum(
-                1 for cid_, d in s.decisions_made.items()
-                if gt_map.get(cid_) == d
-            )
-            efficiency = self._reward_calc.calculate_efficiency_bonus(
-                s.step_number, s.max_steps, correct, len(s.candidates),
-            )
-            penalty = self._fairness.compute_penalty(
-                s.decisions_made, s.candidates,
-            )
-            accuracy = terminal.get("total", 0.0)
-            raw = accuracy + efficiency - penalty
-            clamped = max(0.0, min(1.0, raw))
-            s.episode_score = round(clamped, 6)
-
-            breakdown = {k: v for k, v in terminal.items() if k != "total"}
-            breakdown["accuracy_total"] = accuracy
-            breakdown["efficiency_bonus"] = efficiency
-            breakdown["fairness_penalty"] = penalty
-
+            score = self._grade_locked()
+            s.episode_score = score
             reward = Reward(
-                step_reward=step_reward,
-                cumulative_reward=s.episode_score,
-                fairness_penalty=round(max(0.0, min(1.0, penalty)), 6),
-                accuracy_bonus=round(max(0.0, min(1.0, accuracy)), 6),
-                breakdown=breakdown,
+                step_reward=score,
+                cumulative_reward=score,
+                breakdown={"grader_score": score},
             )
         else:
-            reward = Reward(step_reward=step_reward)
+            reward = Reward()
 
         obs = self._build_observation()
         return obs, reward, s.is_done, info
@@ -200,15 +177,69 @@ class RecruitmentEnvironment:
     # state
     # ------------------------------------------------------------------
 
-    def state(self) -> EpisodeState:
-        """Return a copy of the current state (never exposes the mutable original).
+    def state(self) -> PublicState:
+        """Return the agent-visible episode state (no ground truth).
 
         Raises ``ValueError`` if no active episode.
         """
         with self._lock:
-            if self._state is None:
-                raise ValueError("No active episode. Call reset() first.")
-            return self._state.model_copy(deep=True)
+            s = self._require_state()
+            return PublicState(
+                task_id=s.task_id,
+                seed=s.seed,
+                step_number=s.step_number,
+                max_steps=s.max_steps,
+                job_description=s.job_description.model_copy(deep=True),
+                candidates_summary=[dict(c) for c in s.candidates_summary],
+                revealed_data=_copy_revealed(s.revealed_data),
+                decisions_made=dict(s.decisions_made),
+                is_done=s.is_done,
+                episode_score=s.episode_score,
+            )
+
+    def verifier_state(self) -> EpisodeState:
+        """Return a copy of the full internal state, including ground truth.
+
+        For graders, tests and post-episode analysis only. Never hand it to
+        an agent during an episode.
+
+        Raises ``ValueError`` if no active episode.
+        """
+        with self._lock:
+            return self._require_state().model_copy(deep=True)
+
+    def grade_report(self) -> dict[str, Any]:
+        """Return the score and a per-candidate breakdown of a finished episode.
+
+        The breakdown includes ground-truth labels, so it is only available
+        once the episode is done.
+
+        Raises ``ValueError`` if no active episode, ``RuntimeError`` if the
+        episode is still running.
+        """
+        with self._lock:
+            s = self._require_state()
+            if not s.is_done:
+                raise RuntimeError(
+                    "Episode is not complete. Finish the episode before grading."
+                )
+            assert s.episode_score is not None
+            task = self._task_registry[s.task_id]
+            gt_map = {c.id: c.ground_truth_label for c in s.candidates}
+            return {
+                "task_id": s.task_id,
+                "score": s.episode_score,
+                "success": s.episode_score >= task.success_threshold,
+                "threshold": task.success_threshold,
+                "decisions": dict(s.decisions_made),
+                "ground_truth": gt_map,
+                "correct": sum(
+                    1 for cid, d in s.decisions_made.items() if gt_map.get(cid) == d
+                ),
+                "total": len(s.candidates),
+                "steps_used": s.step_number,
+                "max_steps": s.max_steps,
+            }
 
     # ------------------------------------------------------------------
     # action executors
@@ -222,13 +253,9 @@ class RecruitmentEnvironment:
     ) -> None:
         cid = action.candidate_id
         candidate = _find_candidate(s, cid)
-
-        if cid not in s.revealed_data:
-            s.revealed_data[cid] = {"resume_sections": [], "platforms": []}
+        revealed = _revealed_for(s, cid)
 
         section_name = action.section
-        revealed = s.revealed_data[cid]
-
         if section_name in revealed["resume_sections"]:
             info["already_revealed"] = True
             info["data"] = {}
@@ -241,9 +268,10 @@ class RecruitmentEnvironment:
             info["available_sections"] = list(candidate.resume_sections.keys())
             return
 
-        revealed["resume_sections"].append(section_name)
+        data = section.model_dump()
+        revealed["resume_sections"][section_name] = data
         info["section_found"] = True
-        info["data"] = section.model_dump()
+        info["data"] = dict(data)
 
     @staticmethod
     def _exec_check_platform(
@@ -253,38 +281,17 @@ class RecruitmentEnvironment:
     ) -> None:
         cid = action.candidate_id
         candidate = _find_candidate(s, cid)
-
-        if cid not in s.revealed_data:
-            s.revealed_data[cid] = {"resume_sections": [], "platforms": []}
+        revealed = _revealed_for(s, cid)
 
         platform = action.platform
-        revealed = s.revealed_data[cid]
-
         if platform in revealed["platforms"]:
             info["already_revealed"] = True
             info["data"] = {}
             return
 
-        revealed["platforms"].append(platform)
-
-        if platform == "github":
-            info["data"] = candidate.github.model_dump()
-        elif platform == "leetcode":
-            info["data"] = candidate.leetcode.model_dump()
-        elif platform == "kaggle":
-            info["data"] = candidate.kaggle.model_dump()
-
-    @staticmethod
-    def _exec_score_dimension(
-        action: ScoreDimensionAction,
-        s: EpisodeState,
-        info: dict[str, Any],
-    ) -> None:
-        cid = action.candidate_id
-        if cid not in s.scores_recorded:
-            s.scores_recorded[cid] = {}
-        s.scores_recorded[cid][action.dimension] = action.score
-        info["recorded"] = True
+        stats = getattr(candidate, platform).model_dump()
+        revealed["platforms"][platform] = stats
+        info["data"] = dict(stats)
 
     @staticmethod
     def _exec_make_decision(
@@ -299,6 +306,17 @@ class RecruitmentEnvironment:
     # helpers
     # ------------------------------------------------------------------
 
+    def _require_state(self) -> EpisodeState:
+        if self._state is None:
+            raise ValueError("No active episode. Call reset() first.")
+        return self._state
+
+    def _grade_locked(self) -> float:
+        s = self._state
+        assert s is not None and self._initial_obs is not None
+        grader = self._grader_registry[s.task_id]
+        return round(grader.grade(self._initial_obs, s.model_copy(deep=True)), 6)
+
     def _build_observation(self) -> Observation:
         """Build an Observation from the current state."""
         s = self._state
@@ -308,12 +326,9 @@ class RecruitmentEnvironment:
             step_number=s.step_number,
             steps_remaining=s.max_steps - s.step_number,
             job_description=s.job_description.model_copy(deep=True),
-            candidates_summary=list(s.candidates_summary),
-            revealed_data={k: _deep_copy_dict(v) for k, v in s.revealed_data.items()},
+            candidates_summary=[dict(c) for c in s.candidates_summary],
+            revealed_data=_copy_revealed(s.revealed_data),
             decisions_made=dict(s.decisions_made),
-            scores_recorded={
-                k: dict(v) for k, v in s.scores_recorded.items()
-            },
             done=s.is_done,
         )
 
@@ -331,14 +346,11 @@ def _find_candidate(s: EpisodeState, cid: str) -> CandidateProfile:
     raise ValueError(f"Candidate '{cid}' not found")
 
 
-def _deep_copy_dict(d: dict) -> dict:
-    """Simple recursive copy for nested dicts/lists (no custom objects)."""
-    out: dict = {}
-    for k, v in d.items():
-        if isinstance(v, dict):
-            out[k] = _deep_copy_dict(v)
-        elif isinstance(v, list):
-            out[k] = list(v)
-        else:
-            out[k] = v
-    return out
+def _revealed_for(s: EpisodeState, cid: str) -> dict[str, dict[str, Any]]:
+    """Return (creating if needed) the revealed-data record for a candidate."""
+    return s.revealed_data.setdefault(cid, {"resume_sections": {}, "platforms": {}})
+
+
+def _copy_revealed(revealed: dict[str, Any]) -> dict[str, Any]:
+    """Deep copy of revealed data (nested dicts and lists of plain values)."""
+    return copy.deepcopy(revealed)

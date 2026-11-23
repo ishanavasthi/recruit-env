@@ -273,7 +273,7 @@ async def grade() -> GradeResponse:
 5. Build a verbose breakdown: score, pass/fail vs threshold, all decisions, all ground truths, correct count.
 6. Return `GradeResponse`.
 
-The breakdown is what makes this endpoint useful — judges can audit exactly why the score is what it is.
+The breakdown is what makes this endpoint useful — anyone can audit exactly why the score is what it is.
 
 ### `GET /baseline`
 
@@ -294,7 +294,7 @@ async def baseline() -> BaselineResponse:
     return BaselineResponse(**result)
 ```
 
-**Important distinction:** this is the *built-in, no-API-key-required* rule-based baseline, not the LLM baseline in `baseline/run_baseline.py`. Judges can hit `GET /baseline` from any HF Space and get a reproducible score without needing an OpenAI key.
+**Important distinction:** this is the *built-in, no-API-key-required* rule-based baseline, not the LLM baseline in `baseline/run_baseline.py`. Anyone can hit `GET /baseline` on the HF Space and get a reproducible score without needing an OpenAI key.
 
 It memoises the first call's result in `_baseline_cache` — subsequent calls are O(1).
 
