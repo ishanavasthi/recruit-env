@@ -1,14 +1,15 @@
 """Scoring and difficulty probes for RecruitEnv (read-only, 200 seeds per task).
 
-Evidence for docs/research/2026-11-21-findings-and-roadmap.md. Run from the
-repo root:
+The findings in docs/research/2026-11-21-findings-and-roadmap.md came from the
+v1.0.0 version of this script (tag `v1.0.0`). This version runs against the
+2.x API, where the grader's score is the episode score. Run from the repo root:
 
     PYTHONDONTWRITEBYTECODE=1 uv run --no-project --python 3.11 \
         --with fastapi --with pydantic --with numpy --with python-dotenv \
         python scripts/probe_scoring.py
 
-Columns: `grader` is the task grader's score, `env_score` is the environment's
-own terminal `episode_score`, `pass%` is the share of seeds where the grader
+Columns: `grader` is `grade_report()["score"]`, `env_score` is the terminal
+`episode_score` (they must agree), `pass%` is the share of seeds where the
 score meets the task's success threshold.
 """
 import statistics as st
@@ -18,8 +19,8 @@ sys.path.insert(0, ".")
 
 from env.environment import RecruitmentEnvironment
 from env.fairness import FairnessChecker
-from env.models import CheckPlatformAction, MakeDecisionAction, ScoreDimensionAction
-from tasks import GRADER_REGISTRY, TASK_REGISTRY
+from env.models import CheckPlatformAction, MakeDecisionAction, ReadResumeSectionAction
+from tasks import TASK_REGISTRY
 
 SEEDS = range(200)
 TASKS = ["easy", "medium", "hard"]
@@ -30,16 +31,15 @@ def run(task, seed, policy):
     obs = env.reset(task, seed)
     final = policy(env, obs)
     state = env.state()
-    return GRADER_REGISTRY[task].grade(obs, state), state.episode_score, state, final
+    return env.grade_report()["score"], state.episode_score, state, final
 
 
 def finish(env):
-    """Burn remaining budget with a free no-op so the episode terminates."""
-    s = env.state()
+    """Burn remaining budget by re-reading one section so the episode terminates."""
     last = None
-    cid = s.candidates[0].id
+    cid = env.state().candidates_summary[0]["id"]
     while not env.state().is_done:
-        last = env.step(ScoreDimensionAction(candidate_id=cid, dimension="technical", score=0.5))
+        last = env.step(ReadResumeSectionAction(candidate_id=cid, section="education"))
     return last
 
 
@@ -48,7 +48,7 @@ def finish(env):
 def oracle(env, obs):
     """Decide everything correctly using ground truth, no information gathering."""
     last = None
-    for c in env.state().candidates:
+    for c in env.verifier_state().candidates:
         if env.state().is_done:
             break
         last = env.step(MakeDecisionAction(candidate_id=c.id, decision=c.ground_truth_label))
@@ -109,7 +109,7 @@ def one_signal(env, obs):
 
 def one_correct_reject(env, obs):
     """Decide exactly one candidate (a true reject) and let the budget run out."""
-    c = next(c for c in env.state().candidates if c.ground_truth_label == "reject")
+    c = next(c for c in env.verifier_state().candidates if c.ground_truth_label == "reject")
     env.step(MakeDecisionAction(candidate_id=c.id, decision="reject"))
     return finish(env)
 
@@ -141,7 +141,7 @@ for task in TASKS:
     for seed in SEEDS:
         env = RecruitmentEnvironment()
         env.reset(task, seed)
-        s = env.state()
+        s = env.verifier_state()
         dec = {c.id: c.ground_truth_label for c in s.candidates}
         pens.append(FairnessChecker.compute_penalty(dec, s.candidates))
     print(f"  {task:7s} mean={st.mean(pens):.3f}  penalised in {100*sum(p>0 for p in pens)/len(pens):.0f}% of seeds, max(0.2) in {100*sum(p>=0.2 for p in pens)/len(pens):.0f}%")
@@ -152,7 +152,7 @@ rows = []
 for seed in SEEDS:
     env = RecruitmentEnvironment()
     env.reset("hard", seed)
-    for c in env.state().candidates:
+    for c in env.verifier_state().candidates:
         rows.append((c.ground_truth_label, c))
 fields = {
     "leetcode.contest_rating": lambda c: c.leetcode.contest_rating,
@@ -181,21 +181,25 @@ conf = 0
 for seed in SEEDS:
     env = RecruitmentEnvironment()
     env.reset("medium", seed)
-    for c in env.state().candidates[:2]:
+    for c in env.verifier_state().candidates[:2]:
         t = {tier(c.leetcode.contest_rating, 1200, 1601), tier(c.github.repos, 10, 30)}
         conf += len(t) > 1
 print(f"  conflicted (github tier != leetcode tier): {conf} of {2*len(SEEDS)}")
 
 # --- step reward farming ------------------------------------------------------
 env = RecruitmentEnvironment()
-obs = env.reset("easy", 42)
+obs = env.reset("hard", 42)
 tot = 0.0
-cid = obs.candidates_summary[0]["id"]
-for _ in range(40):
-    _, r, done, _ = env.step(ScoreDimensionAction(candidate_id=cid, dimension="technical", score=0.0))
-    tot += r.step_reward
-print(f"\nsum of step rewards from 40x score_dimension on one candidate, zero decisions: {tot:.2f}")
+done = False
+for c in obs.candidates_summary:
+    for platform in ("github", "leetcode", "kaggle"):
+        if done:
+            break
+        _, r, done, _ = env.step(CheckPlatformAction(candidate_id=c["id"], platform=platform))
+        tot += r.step_reward
+print(f"\nsum of step rewards from revealing until the budget ends, zero decisions (hard): {tot:.3f}")
 print("observation.revealed_data after a check carries stats?:", end=" ")
 env = RecruitmentEnvironment(); obs = env.reset("easy", 42)
+cid = obs.candidates_summary[0]["id"]
 o, _, _, info = env.step(CheckPlatformAction(candidate_id=cid, platform="github"))
-print(o.revealed_data, "| info keys:", list(info["data"].keys())[:3])
+print(o.revealed_data[cid]["platforms"]["github"] == info["data"])
