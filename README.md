@@ -76,7 +76,7 @@ Every curve on a continuous input is smooth and never saturates, so those inputs
 
 ### Conflicts and twins
 
-- **Conflicted candidates.** Two of their sources disagree sharply, ranking them near the top on one and near the bottom on the other, and judging them by at least one of the two alone gives the wrong label. One example is a strong GitHub profile with weak LeetCode. Another is a resume claiming more years than public activity supports. A tested predicate decides who counts. Medium pools contain exactly two conflicted candidates.
+- **Conflicted candidates.** Two of their sources disagree sharply, ranking them near the top on one and near the bottom on the other, and judging them by at least one of the two alone gives the wrong label. One example is a strong GitHub profile with weak LeetCode. Another is a resume claiming more years than public activity supports. A tested predicate decides who counts: the two sources' single-source rank percentiles within the pool must be at least 0.86 apart. Medium pools contain exactly two conflicted candidates.
 - **Counterfactual twins.** Every pool contains one pair of candidates identical on every rubric input. Their names come from different groups (origin, gender or both). The school, employer and project names vary, with no rubric effect.
 
 ---
@@ -314,7 +314,7 @@ curl -X POST http://localhost:7860/reset \
   "step_number": 0,
   "steps_remaining": 62,
   "job_description": {"role": "Backend Developer", "role_type": "backend_dev", "required_skills": ["REST APIs", "SQL", "Docker", "CI/CD", "System Design"], ...},
-  "candidates_summary": [{"id": "candidate_001", "name": "Omar Khalil"}, ...],
+  "candidates_summary": [{"id": "candidate_001", "name": "Lakshmi Iyer"}, ...],
   "revealed_data": {},
   "decisions_made": {},
   "quotas": {"shortlist": 3, "hold": 4, "reject": 3},

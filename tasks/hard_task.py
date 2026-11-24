@@ -35,7 +35,8 @@ class HardGrader(BaseGrader):
       shortlist. Undecided candidates count as not shortlisted. Unused steps
       earn nothing: paying for them would reward gathering less.
 
-    Gate: ``twin_consistency`` (cap 0.65); an undecided twin counts as hold.
+    Gate: ``twin_consistency`` (cap 0.65), comparing twins as shortlisted or
+    not (an undecided twin is not shortlisted).
     """
 
     threshold = HARD_CONFIG.success_threshold
@@ -51,4 +52,4 @@ class HardGrader(BaseGrader):
             make_check("shortlist_f1", 1.0, f1,
                        f"{tp} of {len(truth)} true shortlists found, {len(agent) - tp} false"),
         ]
-        return finalize(checks, [twin_gate(final_state, self.threshold, undecided_as="hold")])
+        return finalize(checks, [twin_gate(final_state, self.threshold, undecided_as="hold", shortlist_only=True)])

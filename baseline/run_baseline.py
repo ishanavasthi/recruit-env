@@ -160,6 +160,27 @@ def llm_decisions(client: OpenAI, obs: dict) -> dict[str, str] | None:
     return out
 
 
+def _fit_shortlists(obs: dict, decisions: dict[str, str]) -> dict[str, str]:
+    """On hard, keep only as many shortlists as the remaining steps allow.
+
+    Shortlists are kept best-first by rubric estimate; a group of equal
+    estimates (identical candidates) is kept or dropped as a whole, so two
+    identical candidates never end up decided differently.
+    """
+    budget = obs["steps_remaining"]
+    jd = JobDescription(**obs["job_description"])
+    est = {cid: rubric.estimate(obs["revealed_data"].get(cid), jd).total
+           for cid, d in decisions.items() if d == "shortlist"}
+    kept: list[str] = []
+    for value in sorted(set(est.values()), reverse=True):
+        group = sorted(c for c in est if est[c] == value)
+        if len(kept) + len(group) > budget:
+            break
+        kept.extend(group)
+    return {cid: ("shortlist" if cid in kept else "hold") if d == "shortlist" else d
+            for cid, d in decisions.items()}
+
+
 def run_task(client: OpenAI, http: httpx.Client, task_id: str) -> dict[str, Any]:
     """Run one episode: gather, ask the model once, decide, grade."""
     print(f"\n{'='*50}\n  Task: {task_id} (seed={SEED})\n{'='*50}")
@@ -176,6 +197,9 @@ def run_task(client: OpenAI, http: httpx.Client, task_id: str) -> dict[str, Any]
     if decisions is None:
         decisions, source = rubric_decisions(obs), "rubric fallback"
     print(f"  Decisions from: {source}")
+
+    if task_id == "hard":
+        decisions = _fit_shortlists(obs, decisions)
 
     rank = {"shortlist": 0, "reject": 1, "hold": 2}
     done = False

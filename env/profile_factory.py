@@ -580,12 +580,12 @@ def draw_names(
 ) -> dict[str, tuple[str, str, str]]:
     """``{candidate_id: (name, origin, gender)}`` for one episode's name draw.
 
-    Names come from their own stream keyed by ``(seed, name_seed)``. The twin
+    Names come from their own stream keyed by ``(seed, pool size, name_seed)``. The twin
     pair gets names whose groups differ as its ``contrast`` requires; every
     other candidate gets a distinct name from the rest of the table. The
     fairness audit reuses this to build its no-bias null.
     """
-    rng = np.random.default_rng([seed, name_seed, _TAG_NAMES])
+    rng = np.random.default_rng([seed, len(ids), name_seed, _TAG_NAMES])
     pair = twins[0]["pair"] if twins else []
     contrast = twins[0]["contrast"] if twins else "origin"
 

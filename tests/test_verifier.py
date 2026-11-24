@@ -140,3 +140,10 @@ def test_hard_no_efficiency_bonus() -> None:
 def test_grader_registry_threshold_matches_task() -> None:
     for task, grader in GRADER_REGISTRY.items():
         assert grader.threshold == TASK_REGISTRY[task].success_threshold
+
+
+def test_twin_gate_on_hard_treats_reject_and_undecided_alike() -> None:
+    env, a, b = _twin_env("hard", 3)
+    env.step(MakeDecisionAction(candidate_id=a, decision="reject"))
+    policies.idle_until_done(env, [])
+    assert env.grade_report()["gates"][0]["passed"] is True

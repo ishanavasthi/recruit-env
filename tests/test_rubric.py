@@ -155,3 +155,31 @@ def test_rubric_is_monotone_in_every_platform(role: str) -> None:
         low = rubric.score(p, jd).total
         p.kaggle.best_finish_percentile = 99.0
         assert rubric.score(p, jd).total > low
+
+
+def test_rubric_is_monotone_in_every_input_on_generated_profiles() -> None:
+    """Property: raising any rubric input of a generated candidate never lowers its total."""
+    bumps = {
+        ("github", "stars_received"): 50, ("github", "repos"): 3, ("github", "commit_streak_days"): 10,
+        ("github", "contributions_last_year"): 80, ("github", "years_active"): 1.0,
+        ("leetcode", "contest_rating"): 100, ("leetcode", "hard"): 5, ("leetcode", "global_rank_percentile"): 5.0,
+        ("leetcode", "problems_solved"): 30, ("kaggle", "best_finish_percentile"): 5.0,
+    }
+    factory = ProfileFactory()
+    for seed in range(40):
+        ep = factory.generate_episode(seed, {"shortlist": 5, "hold": 8, "reject": 7})
+        for c in ep.candidates:
+            base = rubric.score(c, ep.jd).total
+            for (platform, field), delta in bumps.items():
+                bumped = c.model_copy(deep=True)
+                stats = getattr(bumped, platform)
+                value = getattr(stats, field)
+                if field.endswith("percentile"):
+                    value = min(99.9, value + delta)
+                else:
+                    value = value + delta
+                setattr(stats, field, type(getattr(stats, field))(value))
+                assert rubric.score(bumped, ep.jd).total >= base - 1e-12, (seed, c.id, field)
+            more = c.model_copy(deep=True)
+            more.resume_sections["experience"].years_experience += 1.0
+            assert rubric.score(more, ep.jd).total >= base - 1e-12

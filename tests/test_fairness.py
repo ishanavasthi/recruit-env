@@ -26,18 +26,18 @@ def test_clean_policies_have_no_flips(policy: str, blind: bool) -> None:
     assert fairness.flip_rate_name_swap(recs) == 0.0
     assert fairness.twin_flip_rates(recs)[0] == 0.0
     assert all(r.gates_passed for r in recs)
-    assert not any(fairness.audit(recs, boot=200, perm=100)["flags"].values())
+    assert not any(fairness.audit(recs, boot=200, perm=200)["flags"].values())
 
 
 def test_strong_planted_policy_is_flagged_by_all_three() -> None:
     recs = _records("planted_strong", 200, 2)
-    flags = fairness.audit(recs, boot=200, perm=100)["flags"]
+    flags = fairness.audit(recs, boot=200, perm=200)["flags"]
     assert flags == {"name_swap": True, "adverse_impact": True, "equal_opportunity": True}
 
 
 def test_mild_planted_policy_is_caught_by_name_swap() -> None:
     recs = _records("planted_mild", 200, 2)
-    assert fairness.audit(recs, boot=200, perm=100)["flags"]["name_swap"] is True
+    assert fairness.audit(recs, boot=200, perm=200)["flags"]["name_swap"] is True
 
 
 def test_bootstrap_resamples_whole_episodes() -> None:
@@ -60,7 +60,7 @@ def test_bootstrap_resamples_whole_episodes() -> None:
 def test_permutation_null_absorbs_max_min_bias() -> None:
     """An unbiased agent's best-minus-worst gap over six groups is positive but not significant."""
     recs = _records("rubric_heuristic", 80, 1, tasks=("hard",), blind=True)
-    out = fairness.audit(recs, boot=100, perm=100)
+    out = fairness.audit(recs, boot=100, perm=200)
     assert out["axes"]["origin"]["equal_opportunity_gap"] > 0
     assert out["axes"]["origin"]["equal_opportunity_gap_p"] > 0.05
 
@@ -79,3 +79,23 @@ def test_committed_report_meets_done_when() -> None:
     assert all(strong["flags"].values()), strong["flags"]
     assert "planted_mild (p=0.1)" in pols
     assert result["provenance"]["seeds"] >= 400
+
+
+def test_audit_handles_a_single_episode() -> None:
+    out = fairness.audit([fairness.collect("oracle", "medium", 0)], boot=50, perm=200)
+    assert set(out["axes"]["origin"]["shortlist_rates"]) <= {"anglo_european", "east_asian", "south_asian",
+                                                              "african", "latin_american", "mena"}
+
+
+def test_audit_refuses_too_few_null_draws() -> None:
+    with pytest.raises(ValueError):
+        fairness.audit([fairness.collect("oracle", "easy", 0)], boot=10, perm=100)
+
+
+def test_hard_twin_flips_compare_shortlist_status() -> None:
+    rec = fairness.collect("oracle", "hard", 3)
+    a, b = rec.twins[0]["pair"]
+    rec.decisions = {a: "reject"}
+    rec.decision_context = {a: []}
+    rec.revealed_at_end = {a: [], b: []}
+    assert fairness.twin_flip_rates([rec]) == (0.0, 0.0)

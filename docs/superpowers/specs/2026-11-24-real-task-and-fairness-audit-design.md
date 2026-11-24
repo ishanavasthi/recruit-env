@@ -62,7 +62,7 @@ One importable module that the generator, verifier, heuristic baseline, inferenc
 
 **Components** (each in [0, 1]):
 
-- **Technical.** Per-source sub-scores for leetcode, github and kaggle, combined with role weights, so Kaggle matters for ML and data roles and barely for frontend. Spread between the sources lowers the result (a corroboration penalty): `technical = weighted_mean - kappa * weighted_spread`.
+- **Technical.** Per-source sub-scores for leetcode, github and kaggle, combined with role weights, so Kaggle matters for ML and data roles and barely for frontend. Disagreement between the sources lowers the result (a corroboration rule). As built (§10.24): a weighted power mean with exponent −2, `(Σ w·sub⁻²)^(−1/2)`, which is monotone; the original `weighted_mean - kappa * weighted_spread` was not.
 - **Experience.** Claimed years count only up to what GitHub activity supports (`years_active + slack`). The capped years are then scored against the JD's `experience_years` and seniority with a smooth curve.
 - **Growth.** From the commit streak and contributions last year.
 - **Skill match.** The share of the JD's required skills in the resume skills list, plus a smaller term for nice-to-have skills.
@@ -73,7 +73,7 @@ One importable module that the generator, verifier, heuristic baseline, inferenc
 - `score(profile, jd) -> RubricBreakdown` gives the exact score from a full profile.
 - `estimate(revealed, jd) -> RubricBreakdown` gives the same formula from partially revealed data, filling each unrevealed source with a published role-specific prior mean. Heuristic agents and the baseline use it.
 - `source_subscores(...)` supports the conflict predicate and the single-source adversary.
-- *Builder's call:* exact constants (`kappa`, slack, saturation scales, `a`, `b`, the role weights), set during the sweep and recorded in the module and README.
+- *Builder's call:* exact constants (the power-mean exponent, slack, saturation scales, `a`, `b`, the role weights), set during the sweep and recorded in the module and README.
 
 ### 2. Generator (`env/profile_factory.py`, rewritten)
 

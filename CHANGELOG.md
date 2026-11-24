@@ -41,7 +41,7 @@ Breaking changes to the task, the verifier and the API. The design is in [docs/s
 - **Metrics** (`env/fairness.py`):
   - Name-swap flip rate, twin flip rates and the four-fifths adverse-impact ratio.
   - Equal-opportunity gap and scrutiny gap.
-  - 95% cluster-bootstrap intervals, plus permutation tests so that an unbiased agent's best-minus-worst gap is never flagged.
+  - 95% cluster-bootstrap intervals, plus a Bonferroni-corrected randomisation test whose null redraws names with the generator, so an unbiased agent's best-minus-worst gap is flagged only at the corrected 5% level.
 - **Report.** `scripts/fairness_report.py` writes [docs/results/fairness.md](docs/results/fairness.md) and its JSON.
 - **Removed.** `FairnessChecker` and `fairness_penalty`.
 
@@ -66,7 +66,7 @@ Constants set by `scripts/difficulty_sweep.py` and checked by `tests/test_accept
 - **Measured results.**
   - The best single source passes medium in 7% of seeds and hard in 15.5% (target ≤20%; per role 2–20%).
   - A full read beats it by 0.58 on medium.
-  - On hard, prioritising scores 0.732 against 0.530 for the fixed order (paired CI 0.17–0.24). Random passes 0.5%.
+  - On hard, prioritising scores 0.732 against 0.530 for the fixed order (paired CI 0.17–0.24). Random passes 0.5% of seeds in the sweep (0% in the scoreboard, which uses a different random draw).
 - **Easy's budget changed from 40 to 62.** At 40 steps the rubric heuristic passed only 47–55% of seeds, because hold and reject boundaries need more than three of five sources. Easy now tests applying the rubric to full evidence.
 - **Two early settings missed.** Before growth was split and the weights balanced, one source (GitHub, later LeetCode) passed hard in 21–37% of seeds. Removing GitHub's hint about claimed years and strengthening corroboration fixed it.
 - **Review caught three defects, all fixed.**

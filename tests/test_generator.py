@@ -145,15 +145,15 @@ def _pool_hash(task: str, seed: int) -> str:
 
 
 PINNED: dict[tuple[str, int], str] = {
-    ("easy", 0): "2fe6b13b1cb4fc49",
-    ("easy", 1): "2a15ce3f81927e6c",
-    ("easy", 2): "afe8c3deebb28247",
-    ("medium", 0): "e6ab36d29a45a40b",
-    ("medium", 1): "6585099f4fa039bc",
-    ("medium", 2): "2bbd383841c4e69b",
-    ("hard", 0): "81b5e1dba20143ac",
-    ("hard", 1): "231d35e6a317e111",
-    ("hard", 2): "b65bcc22fef12d0c",
+    ("easy", 0): "75f628a2731cbbc4",
+    ("easy", 1): "f4c4d057d479fe77",
+    ("easy", 2): "255cd4c4b519bdc6",
+    ("medium", 0): "eff9966e2de445d7",
+    ("medium", 1): "b53a0ad13254024d",
+    ("medium", 2): "2780477f3853028b",
+    ("hard", 0): "344019951849f2c0",
+    ("hard", 1): "ebbcbbdb513a87a0",
+    ("hard", 2): "2085fd364ac88213",
 }
 
 
