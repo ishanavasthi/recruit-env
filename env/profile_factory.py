@@ -58,6 +58,7 @@ RHO_TECH = 0.25        # correlation between the three platform abilities
 MARGIN = 0.004         # minimum rubric gap between adjacent label bands
 CONFLICT_GAP = 0.86    # rank-percentile disagreement that makes a conflict
 CONFLICT_RATE = 0.25   # chance a candidate gets an injected conflicting source
+SKILL_COVERAGE = (2.0, 2.0)  # Beta(a, b) share of the JD's skills a candidate lists
 MAX_ATTEMPTS = 500
 
 TWIN_LABEL_WEIGHTS: dict[str, float] = {"shortlist": 0.50, "hold": 0.35, "reject": 0.15}
@@ -405,7 +406,7 @@ def _draw_record(rng: Generator, jd: JobDescription) -> dict[str, Any]:
     z_alg, z_eng, z_ml = rng.multivariate_normal(np.zeros(3), cov)
     z_growth = 0.3 * z_eng + math.sqrt(1 - 0.09) * rng.standard_normal()
     years = float(np.clip(math.exp(rng.normal(math.log(3.5), 0.55)), 0.3, 15.0))
-    coverage = float(rng.beta(2.0, 2.0))
+    coverage = float(rng.beta(*SKILL_COVERAGE))
 
     def noisy(z: float) -> float:
         return z + NOISE * rng.standard_normal()

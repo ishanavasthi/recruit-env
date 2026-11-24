@@ -17,9 +17,10 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from env import policies
 from env.environment import RecruitmentEnvironment
 from env.models import (
     Action,
@@ -55,6 +56,14 @@ _baseline_cache: dict[str, Any] | None = None
 class ResetRequest(BaseModel):
     task_id: str = "easy"
     seed: int = 42
+    name_seed: int = Field(
+        default=0,
+        description="Redraws only the names: same seed, different name_seed = a name-swap replay",
+    )
+    name_blind: bool = Field(
+        default=False,
+        description="Show neutral labels ('Candidate 07') instead of names",
+    )
 
 
 class StepResponse(BaseModel):
@@ -157,7 +166,7 @@ async def reset(body: ResetRequest | None = None) -> Observation:
         body = ResetRequest()
     async with _lock:
         try:
-            return _env.reset(body.task_id, body.seed)
+            return _env.reset(body.task_id, body.seed, name_seed=body.name_seed, name_blind=body.name_blind)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
@@ -204,6 +213,8 @@ async def grade() -> GradeResponse:
 
     The score equals the terminal step's ``cumulative_reward``. The breakdown
     includes ground-truth labels, so it is only available after the episode.
+    It also lists the verifier's weighted ``checks`` and ``gates`` and the
+    ``score_before_gates``.
     """
     async with _lock:
         try:
@@ -221,9 +232,9 @@ async def grade() -> GradeResponse:
 async def baseline() -> BaselineResponse:
     """Run a simple rule-based baseline agent on all tasks.
 
-    This does NOT call an LLM — it uses a deterministic heuristic:
-    check leetcode + github for each candidate, then decide based on
-    problems_solved and repo count thresholds.
+    This does NOT call an LLM. It runs the deterministic rubric heuristic:
+    screen every candidate with one source, investigate the candidates
+    nearest a quota cut, then decide by the published rubric.
     """
     global _baseline_cache
     if _baseline_cache is not None:
@@ -249,52 +260,14 @@ async def baseline() -> BaselineResponse:
 
 
 async def _run_rule_baseline(task_id: str, seed: int = 42) -> float:
-    """Play one episode with a simple heuristic agent, return its episode score."""
+    """Play one episode with the rule-based rubric heuristic, return its score.
+
+    The heuristic screens every candidate with one source, spends the rest of
+    the budget on the candidates nearest a quota cut, and decides by the
+    published rubric (``env.policies.rubric_heuristic``). It never reads names.
+    """
     env = RecruitmentEnvironment()
-    obs = env.reset(task_id, seed)
-    cids = [c["id"] for c in obs.candidates_summary]
-    done = False
-
-    for cid in cids:
-        if done:
-            break
-
-        obs, _, done, _ = env.step(
-            CheckPlatformAction(candidate_id=cid, platform="leetcode")
-        )
-        if done:
-            break
-        obs, _, done, _ = env.step(
-            CheckPlatformAction(candidate_id=cid, platform="github")
-        )
-        if done:
-            break
-
-        platforms = obs.revealed_data[cid]["platforms"]
-        lc_data = platforms.get("leetcode", {})
-        gh_data = platforms.get("github", {})
-
-        # Simple heuristic thresholds
-        problems = lc_data.get("problems_solved", 0)
-        repos = gh_data.get("repos", 0)
-        hard = lc_data.get("hard", 0)
-
-        if problems >= 200 and repos >= 25 and hard >= 15:
-            decision = "shortlist"
-        elif problems < 80 and repos < 8:
-            decision = "reject"
-        else:
-            decision = "hold"
-
-        obs, _, done, _ = env.step(
-            MakeDecisionAction(candidate_id=cid, decision=decision)
-        )
-
-    # Burn any remaining budget so the episode ends and is scored.
-    while not done:
-        obs, _, done, _ = env.step(
-            CheckPlatformAction(candidate_id=cids[0], platform="leetcode")
-        )
-
+    env.reset(task_id, seed)
+    policies.rubric_heuristic(env)
     score = env.state().episode_score
     return score if score is not None else 0.0

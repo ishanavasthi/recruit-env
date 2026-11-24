@@ -1,5 +1,7 @@
 """Tests for the FastAPI endpoints."""
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -201,7 +203,10 @@ class TestState:
 # hidden verifier: nothing an agent can call mid-episode leaks the answers
 # -----------------------------------------------------------------------
 
-_FORBIDDEN_KEYS = {"ground_truth", "ground_truth_label", "ground_truth_scores", "candidates"}
+_FORBIDDEN_KEYS = {
+    "ground_truth", "ground_truth_label", "ground_truth_scores", "candidates",
+    "origin", "gender", "conflicts", "twins", "decision_context",
+}
 
 
 def _keys(obj) -> set[str]:
@@ -281,3 +286,37 @@ class TestHiddenVerifier:
             "score": 0.5,
         })
         assert r.status_code == 422
+
+
+class TestFairnessControls:
+    def test_name_blind_hides_names(self) -> None:
+        import re
+
+        from env.names import NAME_TABLE
+
+        obs = client.post("/reset", json={"task_id": "hard", "seed": 11, "name_blind": True}).json()
+        cid = obs["candidates_summary"][0]["id"]
+        bodies = [obs, client.post("/step", json={"type": "read_resume_section", "candidate_id": cid,
+                                                  "section": "education"}).json(), client.get("/state").json()]
+        text = " ".join(json.dumps(b) for b in bodies)
+        assert not [n for n, _, _ in NAME_TABLE if n in text]
+        assert all(re.fullmatch(r"Candidate \d\d", c["name"]) for c in obs["candidates_summary"])
+        assert bodies[-1]["name_blind"] is True
+
+    def test_name_seed_redraws_only_names(self) -> None:
+        a = client.post("/reset", json={"task_id": "easy", "seed": 4}).json()
+        b = client.post("/reset", json={"task_id": "easy", "seed": 4, "name_seed": 2}).json()
+        assert [c["id"] for c in a["candidates_summary"]] == [c["id"] for c in b["candidates_summary"]]
+        assert [c["name"] for c in a["candidates_summary"]] != [c["name"] for c in b["candidates_summary"]]
+        assert a["job_description"] == b["job_description"] and a["quotas"] == b["quotas"]
+
+    def test_grader_returns_checks_and_gates(self) -> None:
+        obs = client.post("/reset", json={"task_id": "medium", "seed": 6}).json()
+        for c in obs["candidates_summary"]:
+            r = client.post("/step", json={"type": "make_decision", "candidate_id": c["id"], "decision": "hold"})
+        assert r.json()["done"] is True
+        bd = client.post("/grader").json()["breakdown"]
+        names = [c["name"] for c in bd["checks"]]
+        assert names[0] == "decision_accuracy" and any(n.startswith("conflicts_investigated") for n in names)
+        assert bd["gates"][0]["name"] == "twin_consistency"
+        assert sum(c["earned"] for c in bd["checks"]) == pytest.approx(bd["score_before_gates"], abs=1e-6)
