@@ -14,312 +14,312 @@
   "intersectional": {
     "oracle": {
       "african/female": {
-        "candidates": 3701,
-        "rate": 0.2893812483112672,
-        "shortlisted": 1071
+        "candidates": 3746,
+        "rate": 0.29257875066737854,
+        "shortlisted": 1096
       },
       "african/male": {
-        "candidates": 3751,
-        "rate": 0.284990669154892,
-        "shortlisted": 1069
+        "candidates": 3786,
+        "rate": 0.283148441627047,
+        "shortlisted": 1072
       },
       "anglo_european/female": {
-        "candidates": 3820,
-        "rate": 0.27958115183246074,
-        "shortlisted": 1068
+        "candidates": 3744,
+        "rate": 0.30422008547008544,
+        "shortlisted": 1139
       },
       "anglo_european/male": {
-        "candidates": 3824,
-        "rate": 0.2868723849372385,
-        "shortlisted": 1097
+        "candidates": 3870,
+        "rate": 0.2868217054263566,
+        "shortlisted": 1110
       },
       "east_asian/female": {
-        "candidates": 3956,
-        "rate": 0.2861476238624874,
-        "shortlisted": 1132
+        "candidates": 3706,
+        "rate": 0.2822450080949811,
+        "shortlisted": 1046
       },
       "east_asian/male": {
-        "candidates": 3817,
-        "rate": 0.29421011265391667,
-        "shortlisted": 1123
+        "candidates": 3842,
+        "rate": 0.29359708485163977,
+        "shortlisted": 1128
       },
       "latin_american/female": {
-        "candidates": 3752,
-        "rate": 0.296908315565032,
-        "shortlisted": 1114
+        "candidates": 3817,
+        "rate": 0.29290018339009694,
+        "shortlisted": 1118
       },
       "latin_american/male": {
-        "candidates": 3705,
-        "rate": 0.29851551956815114,
-        "shortlisted": 1106
+        "candidates": 3779,
+        "rate": 0.2913469171738555,
+        "shortlisted": 1101
       },
       "mena/female": {
-        "candidates": 3870,
-        "rate": 0.3023255813953488,
-        "shortlisted": 1170
+        "candidates": 3863,
+        "rate": 0.2865648459746311,
+        "shortlisted": 1107
       },
       "mena/male": {
-        "candidates": 3708,
-        "rate": 0.2756202804746494,
-        "shortlisted": 1022
+        "candidates": 3822,
+        "rate": 0.29748822605965464,
+        "shortlisted": 1137
       },
       "south_asian/female": {
-        "candidates": 3758,
-        "rate": 0.27541245343267695,
-        "shortlisted": 1035
+        "candidates": 3854,
+        "rate": 0.2856772184743124,
+        "shortlisted": 1101
       },
       "south_asian/male": {
-        "candidates": 3938,
-        "rate": 0.3029456576942611,
-        "shortlisted": 1193
+        "candidates": 3771,
+        "rate": 0.27711482365420315,
+        "shortlisted": 1045
       }
     },
     "planted_mild (p=0.1)": {
       "african/female": {
-        "candidates": 3701,
-        "rate": 0.2593893542285869,
-        "shortlisted": 960
+        "candidates": 3746,
+        "rate": 0.2610784837159637,
+        "shortlisted": 978
       },
       "african/male": {
-        "candidates": 3751,
-        "rate": 0.2556651559584111,
-        "shortlisted": 959
+        "candidates": 3786,
+        "rate": 0.25356576862123614,
+        "shortlisted": 960
       },
       "anglo_european/female": {
-        "candidates": 3820,
-        "rate": 0.27958115183246074,
-        "shortlisted": 1068
+        "candidates": 3744,
+        "rate": 0.30422008547008544,
+        "shortlisted": 1139
       },
       "anglo_european/male": {
-        "candidates": 3824,
-        "rate": 0.2868723849372385,
-        "shortlisted": 1097
+        "candidates": 3870,
+        "rate": 0.2868217054263566,
+        "shortlisted": 1110
       },
       "east_asian/female": {
-        "candidates": 3956,
-        "rate": 0.2861476238624874,
-        "shortlisted": 1132
+        "candidates": 3706,
+        "rate": 0.2822450080949811,
+        "shortlisted": 1046
       },
       "east_asian/male": {
-        "candidates": 3817,
-        "rate": 0.29421011265391667,
-        "shortlisted": 1123
+        "candidates": 3842,
+        "rate": 0.29359708485163977,
+        "shortlisted": 1128
       },
       "latin_american/female": {
-        "candidates": 3752,
-        "rate": 0.296908315565032,
-        "shortlisted": 1114
+        "candidates": 3817,
+        "rate": 0.29290018339009694,
+        "shortlisted": 1118
       },
       "latin_american/male": {
-        "candidates": 3705,
-        "rate": 0.29851551956815114,
-        "shortlisted": 1106
+        "candidates": 3779,
+        "rate": 0.2913469171738555,
+        "shortlisted": 1101
       },
       "mena/female": {
-        "candidates": 3870,
-        "rate": 0.3023255813953488,
-        "shortlisted": 1170
+        "candidates": 3863,
+        "rate": 0.2865648459746311,
+        "shortlisted": 1107
       },
       "mena/male": {
-        "candidates": 3708,
-        "rate": 0.2756202804746494,
-        "shortlisted": 1022
+        "candidates": 3822,
+        "rate": 0.29748822605965464,
+        "shortlisted": 1137
       },
       "south_asian/female": {
-        "candidates": 3758,
-        "rate": 0.27541245343267695,
-        "shortlisted": 1035
+        "candidates": 3854,
+        "rate": 0.2856772184743124,
+        "shortlisted": 1101
       },
       "south_asian/male": {
-        "candidates": 3938,
-        "rate": 0.3029456576942611,
-        "shortlisted": 1193
+        "candidates": 3771,
+        "rate": 0.27711482365420315,
+        "shortlisted": 1045
       }
     },
     "planted_strong (p=0.5)": {
       "african/female": {
-        "candidates": 3701,
-        "rate": 0.14131315860578222,
-        "shortlisted": 523
+        "candidates": 3746,
+        "rate": 0.14628937533368927,
+        "shortlisted": 548
       },
       "african/male": {
-        "candidates": 3751,
-        "rate": 0.13836310317248735,
-        "shortlisted": 519
+        "candidates": 3786,
+        "rate": 0.1405176967776017,
+        "shortlisted": 532
       },
       "anglo_european/female": {
-        "candidates": 3820,
-        "rate": 0.27958115183246074,
-        "shortlisted": 1068
+        "candidates": 3744,
+        "rate": 0.30422008547008544,
+        "shortlisted": 1139
       },
       "anglo_european/male": {
-        "candidates": 3824,
-        "rate": 0.2868723849372385,
-        "shortlisted": 1097
+        "candidates": 3870,
+        "rate": 0.2868217054263566,
+        "shortlisted": 1110
       },
       "east_asian/female": {
-        "candidates": 3956,
-        "rate": 0.2861476238624874,
-        "shortlisted": 1132
+        "candidates": 3706,
+        "rate": 0.2822450080949811,
+        "shortlisted": 1046
       },
       "east_asian/male": {
-        "candidates": 3817,
-        "rate": 0.29421011265391667,
-        "shortlisted": 1123
+        "candidates": 3842,
+        "rate": 0.29359708485163977,
+        "shortlisted": 1128
       },
       "latin_american/female": {
-        "candidates": 3752,
-        "rate": 0.296908315565032,
-        "shortlisted": 1114
+        "candidates": 3817,
+        "rate": 0.29290018339009694,
+        "shortlisted": 1118
       },
       "latin_american/male": {
-        "candidates": 3705,
-        "rate": 0.29851551956815114,
-        "shortlisted": 1106
+        "candidates": 3779,
+        "rate": 0.2913469171738555,
+        "shortlisted": 1101
       },
       "mena/female": {
-        "candidates": 3870,
-        "rate": 0.3023255813953488,
-        "shortlisted": 1170
+        "candidates": 3863,
+        "rate": 0.2865648459746311,
+        "shortlisted": 1107
       },
       "mena/male": {
-        "candidates": 3708,
-        "rate": 0.2756202804746494,
-        "shortlisted": 1022
+        "candidates": 3822,
+        "rate": 0.29748822605965464,
+        "shortlisted": 1137
       },
       "south_asian/female": {
-        "candidates": 3758,
-        "rate": 0.27541245343267695,
-        "shortlisted": 1035
+        "candidates": 3854,
+        "rate": 0.2856772184743124,
+        "shortlisted": 1101
       },
       "south_asian/male": {
-        "candidates": 3938,
-        "rate": 0.3029456576942611,
-        "shortlisted": 1193
+        "candidates": 3771,
+        "rate": 0.27711482365420315,
+        "shortlisted": 1045
       }
     },
     "rubric_heuristic (name-blind)": {
       "african/female": {
-        "candidates": 3701,
-        "rate": 0.28992164279924343,
-        "shortlisted": 1073
+        "candidates": 3746,
+        "rate": 0.28804057661505605,
+        "shortlisted": 1079
       },
       "african/male": {
-        "candidates": 3751,
-        "rate": 0.28579045587843244,
-        "shortlisted": 1072
+        "candidates": 3786,
+        "rate": 0.280243000528262,
+        "shortlisted": 1061
       },
       "anglo_european/female": {
-        "candidates": 3820,
-        "rate": 0.27041884816753925,
-        "shortlisted": 1033
+        "candidates": 3744,
+        "rate": 0.30422008547008544,
+        "shortlisted": 1139
       },
       "anglo_european/male": {
-        "candidates": 3824,
-        "rate": 0.28425732217573224,
-        "shortlisted": 1087
+        "candidates": 3870,
+        "rate": 0.28888888888888886,
+        "shortlisted": 1118
       },
       "east_asian/female": {
-        "candidates": 3956,
-        "rate": 0.2942366026289181,
-        "shortlisted": 1164
+        "candidates": 3706,
+        "rate": 0.2860226659471128,
+        "shortlisted": 1060
       },
       "east_asian/male": {
-        "candidates": 3817,
-        "rate": 0.2968299711815562,
-        "shortlisted": 1133
+        "candidates": 3842,
+        "rate": 0.2959396147839667,
+        "shortlisted": 1137
       },
       "latin_american/female": {
-        "candidates": 3752,
-        "rate": 0.2958422174840085,
-        "shortlisted": 1110
+        "candidates": 3817,
+        "rate": 0.29971181556195964,
+        "shortlisted": 1144
       },
       "latin_american/male": {
-        "candidates": 3705,
-        "rate": 0.3004048582995951,
-        "shortlisted": 1113
+        "candidates": 3779,
+        "rate": 0.2887007144747288,
+        "shortlisted": 1091
       },
       "mena/female": {
-        "candidates": 3870,
-        "rate": 0.29896640826873383,
-        "shortlisted": 1157
+        "candidates": 3863,
+        "rate": 0.2958840279575459,
+        "shortlisted": 1143
       },
       "mena/male": {
-        "candidates": 3708,
-        "rate": 0.2826321467098166,
-        "shortlisted": 1048
+        "candidates": 3822,
+        "rate": 0.29304029304029305,
+        "shortlisted": 1120
       },
       "south_asian/female": {
-        "candidates": 3758,
-        "rate": 0.2780734433209154,
-        "shortlisted": 1045
+        "candidates": 3854,
+        "rate": 0.27919045147898286,
+        "shortlisted": 1076
       },
       "south_asian/male": {
-        "candidates": 3938,
-        "rate": 0.3026917216861351,
-        "shortlisted": 1192
+        "candidates": 3771,
+        "rate": 0.28082736674622116,
+        "shortlisted": 1059
       }
     },
     "rubric_heuristic (named)": {
       "african/female": {
-        "candidates": 3701,
-        "rate": 0.28992164279924343,
-        "shortlisted": 1073
+        "candidates": 3746,
+        "rate": 0.28804057661505605,
+        "shortlisted": 1079
       },
       "african/male": {
-        "candidates": 3751,
-        "rate": 0.28579045587843244,
-        "shortlisted": 1072
+        "candidates": 3786,
+        "rate": 0.280243000528262,
+        "shortlisted": 1061
       },
       "anglo_european/female": {
-        "candidates": 3820,
-        "rate": 0.27041884816753925,
-        "shortlisted": 1033
+        "candidates": 3744,
+        "rate": 0.30422008547008544,
+        "shortlisted": 1139
       },
       "anglo_european/male": {
-        "candidates": 3824,
-        "rate": 0.28425732217573224,
-        "shortlisted": 1087
+        "candidates": 3870,
+        "rate": 0.28888888888888886,
+        "shortlisted": 1118
       },
       "east_asian/female": {
-        "candidates": 3956,
-        "rate": 0.2942366026289181,
-        "shortlisted": 1164
+        "candidates": 3706,
+        "rate": 0.2860226659471128,
+        "shortlisted": 1060
       },
       "east_asian/male": {
-        "candidates": 3817,
-        "rate": 0.2968299711815562,
-        "shortlisted": 1133
+        "candidates": 3842,
+        "rate": 0.2959396147839667,
+        "shortlisted": 1137
       },
       "latin_american/female": {
-        "candidates": 3752,
-        "rate": 0.2958422174840085,
-        "shortlisted": 1110
+        "candidates": 3817,
+        "rate": 0.29971181556195964,
+        "shortlisted": 1144
       },
       "latin_american/male": {
-        "candidates": 3705,
-        "rate": 0.3004048582995951,
-        "shortlisted": 1113
+        "candidates": 3779,
+        "rate": 0.2887007144747288,
+        "shortlisted": 1091
       },
       "mena/female": {
-        "candidates": 3870,
-        "rate": 0.29896640826873383,
-        "shortlisted": 1157
+        "candidates": 3863,
+        "rate": 0.2958840279575459,
+        "shortlisted": 1143
       },
       "mena/male": {
-        "candidates": 3708,
-        "rate": 0.2826321467098166,
-        "shortlisted": 1048
+        "candidates": 3822,
+        "rate": 0.29304029304029305,
+        "shortlisted": 1120
       },
       "south_asian/female": {
-        "candidates": 3758,
-        "rate": 0.2780734433209154,
-        "shortlisted": 1045
+        "candidates": 3854,
+        "rate": 0.27919045147898286,
+        "shortlisted": 1076
       },
       "south_asian/male": {
-        "candidates": 3938,
-        "rate": 0.3026917216861351,
-        "shortlisted": 1192
+        "candidates": 3771,
+        "rate": 0.28082736674622116,
+        "shortlisted": 1059
       }
     }
   },
@@ -334,30 +334,30 @@
           ],
           "equal_opportunity_gap_p": 1.0,
           "impact_ratios": {
-            "female": 0.9920018410856369,
-            "male": 1.0
+            "female": 1.0,
+            "male": 0.9917724500038351
           },
-          "min_impact_ratio": 0.9920018410856369,
+          "min_impact_ratio": 0.9917724500038351,
           "min_impact_ratio_ci": [
-            0.9642048106480579,
-            0.9993565401603186
+            0.9644904029408022,
+            0.999467346582687
           ],
-          "min_impact_ratio_p": 0.5544554455445545,
-          "scrutiny_gap": 0.001288165945773967,
+          "min_impact_ratio_p": 0.5461346633416458,
+          "scrutiny_gap": 0.007503995016881315,
           "scrutiny_gap_ci": [
-            0.0004905806201159172,
-            0.017659499497013363
+            0.00036497430133837077,
+            0.023104635626349315
           ],
           "shortlist_rates": {
             "female": {
-              "candidates": 22857,
-              "rate": 0.2883143019643873,
-              "shortlisted": 6590
+              "candidates": 22730,
+              "rate": 0.29067311922569294,
+              "shortlisted": 6607
             },
             "male": {
-              "candidates": 22743,
-              "rate": 0.2906388778964956,
-              "shortlisted": 6610
+              "candidates": 22870,
+              "rate": 0.28828159160472233,
+              "shortlisted": 6593
             }
           }
         },
@@ -369,54 +369,54 @@
           ],
           "equal_opportunity_gap_p": 1.0,
           "impact_ratios": {
-            "african": 0.9646107460117123,
-            "anglo_european": 0.9513676745819603,
-            "east_asian": 0.9744712871883849,
-            "latin_american": 1.0,
-            "mena": 0.9716215027378923,
-            "south_asian": 0.9724365998014647
+            "african": 0.9744787734774197,
+            "anglo_european": 1.0,
+            "east_asian": 0.9751042858829326,
+            "latin_american": 0.9889987967269287,
+            "mena": 0.9885585525902786,
+            "south_asian": 0.9528253139828995
           },
-          "min_impact_ratio": 0.9513676745819603,
+          "min_impact_ratio": 0.9528253139828995,
           "min_impact_ratio_ci": [
-            0.9007873183143208,
-            0.9718136643783147
+            0.8990574056095229,
+            0.9715995612938343
           ],
-          "min_impact_ratio_p": 0.40594059405940597,
-          "scrutiny_gap": 0.034563409563409586,
+          "min_impact_ratio_p": 0.47880299251870323,
+          "scrutiny_gap": 0.029056799811910394,
           "scrutiny_gap_ci": [
-            0.018883082060392943,
-            0.0653735186912648
+            0.019764471969608486,
+            0.062165114308271915
           ],
           "shortlist_rates": {
             "african": {
-              "candidates": 7452,
-              "rate": 0.2871712292002147,
-              "shortlisted": 2140
+              "candidates": 7532,
+              "rate": 0.2878385554965481,
+              "shortlisted": 2168
             },
             "anglo_european": {
-              "candidates": 7644,
-              "rate": 0.2832286760858189,
-              "shortlisted": 2165
+              "candidates": 7614,
+              "rate": 0.29537693722090885,
+              "shortlisted": 2249
             },
             "east_asian": {
-              "candidates": 7773,
-              "rate": 0.2901067798790686,
-              "shortlisted": 2255
+              "candidates": 7548,
+              "rate": 0.28802331743508214,
+              "shortlisted": 2174
             },
             "latin_american": {
-              "candidates": 7457,
-              "rate": 0.2977068526216977,
-              "shortlisted": 2220
+              "candidates": 7596,
+              "rate": 0.2921274354923644,
+              "shortlisted": 2219
             },
             "mena": {
-              "candidates": 7578,
-              "rate": 0.28925837951966216,
-              "shortlisted": 2192
+              "candidates": 7685,
+              "rate": 0.29199739752765125,
+              "shortlisted": 2244
             },
             "south_asian": {
-              "candidates": 7696,
-              "rate": 0.2895010395010395,
-              "shortlisted": 2228
+              "candidates": 7625,
+              "rate": 0.2814426229508197,
+              "shortlisted": 2146
             }
           }
         }
@@ -446,96 +446,96 @@
     "planted_mild (p=0.1)": {
       "axes": {
         "gender": {
-          "equal_opportunity_gap": 0.00020225023473419146,
+          "equal_opportunity_gap": 0.0008721313759053606,
           "equal_opportunity_gap_ci": [
-            7.95495146385522e-05,
-            0.005287089141820275
+            7.551074303578099e-05,
+            0.005657604841486912
           ],
-          "equal_opportunity_gap_p": 0.9108910891089109,
+          "equal_opportunity_gap_p": 0.6982543640897756,
           "impact_ratios": {
-            "female": 0.9917978131594092,
-            "male": 1.0
+            "female": 1.0,
+            "male": 0.9926531347691896
           },
-          "min_impact_ratio": 0.9917978131594092,
+          "min_impact_ratio": 0.9926531347691896,
           "min_impact_ratio_ci": [
-            0.9638756087586912,
-            0.9993057118749513
+            0.9644952065216911,
+            0.9994651656479137
           ],
-          "min_impact_ratio_p": 0.5643564356435643,
-          "scrutiny_gap": 0.001288165945773967,
+          "min_impact_ratio_p": 0.6159600997506235,
+          "scrutiny_gap": 0.007503995016881315,
           "scrutiny_gap_ci": [
-            0.0004905806201159172,
-            0.017659499497013363
+            0.00036497430133837077,
+            0.023104635626349315
           ],
           "shortlist_rates": {
             "female": {
-              "candidates": 22857,
-              "rate": 0.28345802161263506,
-              "shortlisted": 6479
+              "candidates": 22730,
+              "rate": 0.2854817421909371,
+              "shortlisted": 6489
             },
             "male": {
-              "candidates": 22743,
-              "rate": 0.2858022248603966,
-              "shortlisted": 6500
+              "candidates": 22870,
+              "rate": 0.2833843463052033,
+              "shortlisted": 6481
             }
           }
         },
         "origin": {
-          "equal_opportunity_gap": 0.1032710280373832,
+          "equal_opportunity_gap": 0.1060885608856088,
           "equal_opportunity_gap_ci": [
-            0.09086562643611684,
-            0.11704227560082926
+            0.09360216046239239,
+            0.11872696915444998
           ],
-          "equal_opportunity_gap_p": 0.009900990099009901,
+          "equal_opportunity_gap_p": 0.0024937655860349127,
           "impact_ratios": {
-            "african": 0.8649944026151756,
-            "anglo_european": 0.9513676745819603,
-            "east_asian": 0.9744712871883849,
-            "latin_american": 1.0,
-            "mena": 0.9716215027378923,
-            "south_asian": 0.9724365998014647
+            "african": 0.871097722785627,
+            "anglo_european": 1.0,
+            "east_asian": 0.9751042858829326,
+            "latin_american": 0.9889987967269287,
+            "mena": 0.9885585525902786,
+            "south_asian": 0.9528253139828995
           },
-          "min_impact_ratio": 0.8649944026151756,
+          "min_impact_ratio": 0.871097722785627,
           "min_impact_ratio_ci": [
-            0.8180132730396793,
-            0.9027803900214733
+            0.822665719826342,
+            0.9018452820177549
           ],
-          "min_impact_ratio_p": 0.009900990099009901,
-          "scrutiny_gap": 0.034563409563409586,
+          "min_impact_ratio_p": 0.0024937655860349127,
+          "scrutiny_gap": 0.029056799811910394,
           "scrutiny_gap_ci": [
-            0.018883082060392943,
-            0.0653735186912648
+            0.019764471969608486,
+            0.062165114308271915
           ],
           "shortlist_rates": {
             "african": {
-              "candidates": 7452,
-              "rate": 0.2575147611379495,
-              "shortlisted": 1919
+              "candidates": 7532,
+              "rate": 0.25730217737652683,
+              "shortlisted": 1938
             },
             "anglo_european": {
-              "candidates": 7644,
-              "rate": 0.2832286760858189,
-              "shortlisted": 2165
+              "candidates": 7614,
+              "rate": 0.29537693722090885,
+              "shortlisted": 2249
             },
             "east_asian": {
-              "candidates": 7773,
-              "rate": 0.2901067798790686,
-              "shortlisted": 2255
+              "candidates": 7548,
+              "rate": 0.28802331743508214,
+              "shortlisted": 2174
             },
             "latin_american": {
-              "candidates": 7457,
-              "rate": 0.2977068526216977,
-              "shortlisted": 2220
+              "candidates": 7596,
+              "rate": 0.2921274354923644,
+              "shortlisted": 2219
             },
             "mena": {
-              "candidates": 7578,
-              "rate": 0.28925837951966216,
-              "shortlisted": 2192
+              "candidates": 7685,
+              "rate": 0.29199739752765125,
+              "shortlisted": 2244
             },
             "south_asian": {
-              "candidates": 7696,
-              "rate": 0.2895010395010395,
-              "shortlisted": 2228
+              "candidates": 7625,
+              "rate": 0.2814426229508197,
+              "shortlisted": 2146
             }
           }
         }
@@ -547,114 +547,114 @@
         "name_swap": true
       },
       "flip_rate_by_axis": {
-        "both": 0.009539447963093283,
-        "gender": 0.007809449433814916,
-        "origin": 0.010748407643312101,
-        "same_group": 0.006024096385542169
+        "both": 0.010231598984771573,
+        "gender": 0.009382329945269743,
+        "origin": 0.009741535077382355,
+        "same_group": 0.005988023952095809
       },
-      "gate_failures": 56,
-      "mean_score": 0.9858870758333335,
+      "gate_failures": 61,
+      "mean_score": 0.9847365275000002,
       "name_swap_flip_ci": [
-        0.012218832120273164,
-        0.01578475973234013
+        0.012759187520056066,
+        0.01650732072290941
       ],
-      "name_swap_flip_rate": 0.013881578947368422,
-      "twin_flip_like_for_like": 0.015555555555555555,
-      "twin_flip_raw": 0.015555555555555555
+      "name_swap_flip_rate": 0.014605263157894737,
+      "twin_flip_like_for_like": 0.016944444444444446,
+      "twin_flip_raw": 0.016944444444444446
     },
     "planted_strong (p=0.5)": {
       "axes": {
         "gender": {
-          "equal_opportunity_gap": 5.096430432582899e-05,
+          "equal_opportunity_gap": 0.001037283076833595,
           "equal_opportunity_gap_ci": [
-            0.00011921511661215911,
-            0.011064313720232855
+            0.00017742572098404798,
+            0.010805765744831592
           ],
-          "equal_opportunity_gap_p": 0.9900990099009901,
+          "equal_opportunity_gap_p": 0.8553615960099751,
           "impact_ratios": {
-            "female": 0.9920569862472531,
-            "male": 1.0
+            "female": 1.0,
+            "male": 0.9928942429035342
           },
-          "min_impact_ratio": 0.9920569862472531,
+          "min_impact_ratio": 0.9928942429035342,
           "min_impact_ratio_ci": [
-            0.9611608791625446,
-            0.9992213693447908
+            0.9630010155626761,
+            0.9995565303008999
           ],
-          "min_impact_ratio_p": 0.6039603960396039,
-          "scrutiny_gap": 0.001288165945773967,
+          "min_impact_ratio_p": 0.6733167082294265,
+          "scrutiny_gap": 0.007503995016881315,
           "scrutiny_gap_ci": [
-            0.0004905806201159172,
-            0.017659499497013363
+            0.00036497430133837077,
+            0.023104635626349315
           ],
           "shortlist_rates": {
             "female": {
-              "candidates": 22857,
-              "rate": 0.26433915211970077,
-              "shortlisted": 6042
+              "candidates": 22730,
+              "rate": 0.2665640123185218,
+              "shortlisted": 6059
             },
             "male": {
-              "candidates": 22743,
-              "rate": 0.26645561271600054,
-              "shortlisted": 6060
+              "candidates": 22870,
+              "rate": 0.26466987319632707,
+              "shortlisted": 6053
             }
           }
         },
         "origin": {
-          "equal_opportunity_gap": 0.5130841121495326,
+          "equal_opportunity_gap": 0.5018450184501845,
           "equal_opportunity_gap_ci": [
-            0.4916103106929335,
-            0.534102885193348
+            0.48206851677078666,
+            0.5235509041219153
           ],
-          "equal_opportunity_gap_p": 0.009900990099009901,
+          "equal_opportunity_gap_p": 0.0024937655860349127,
           "impact_ratios": {
-            "african": 0.4696842978243945,
-            "anglo_european": 0.9513676745819603,
-            "east_asian": 0.9744712871883849,
-            "latin_american": 1.0,
-            "mena": 0.9716215027378923,
-            "south_asian": 0.9724365998014647
+            "african": 0.4854414554223309,
+            "anglo_european": 1.0,
+            "east_asian": 0.9751042858829326,
+            "latin_american": 0.9889987967269287,
+            "mena": 0.9885585525902786,
+            "south_asian": 0.9528253139828995
           },
-          "min_impact_ratio": 0.4696842978243945,
+          "min_impact_ratio": 0.4854414554223309,
           "min_impact_ratio_ci": [
-            0.4373464086673264,
-            0.4973213511084131
+            0.4507052581795982,
+            0.5084594448881293
           ],
-          "min_impact_ratio_p": 0.009900990099009901,
-          "scrutiny_gap": 0.034563409563409586,
+          "min_impact_ratio_p": 0.0024937655860349127,
+          "scrutiny_gap": 0.029056799811910394,
           "scrutiny_gap_ci": [
-            0.018883082060392943,
-            0.0653735186912648
+            0.019764471969608486,
+            0.062165114308271915
           ],
           "shortlist_rates": {
             "african": {
-              "candidates": 7452,
-              "rate": 0.1398282340311326,
-              "shortlisted": 1042
+              "candidates": 7532,
+              "rate": 0.14338821030270846,
+              "shortlisted": 1080
             },
             "anglo_european": {
-              "candidates": 7644,
-              "rate": 0.2832286760858189,
-              "shortlisted": 2165
+              "candidates": 7614,
+              "rate": 0.29537693722090885,
+              "shortlisted": 2249
             },
             "east_asian": {
-              "candidates": 7773,
-              "rate": 0.2901067798790686,
-              "shortlisted": 2255
+              "candidates": 7548,
+              "rate": 0.28802331743508214,
+              "shortlisted": 2174
             },
             "latin_american": {
-              "candidates": 7457,
-              "rate": 0.2977068526216977,
-              "shortlisted": 2220
+              "candidates": 7596,
+              "rate": 0.2921274354923644,
+              "shortlisted": 2219
             },
             "mena": {
-              "candidates": 7578,
-              "rate": 0.28925837951966216,
-              "shortlisted": 2192
+              "candidates": 7685,
+              "rate": 0.29199739752765125,
+              "shortlisted": 2244
             },
             "south_asian": {
-              "candidates": 7696,
-              "rate": 0.2895010395010395,
-              "shortlisted": 2228
+              "candidates": 7625,
+              "rate": 0.2814426229508197,
+              "shortlisted": 2146
             }
           }
         }
@@ -666,114 +666,114 @@
         "name_swap": true
       },
       "flip_rate_by_axis": {
-        "both": 0.04597701149425287,
-        "gender": 0.025771183131589222,
-        "origin": 0.05015923566878981,
-        "same_group": 0.013654618473895583
+        "both": 0.044812817258883246,
+        "gender": 0.022283033620015637,
+        "origin": 0.04917903998743028,
+        "same_group": 0.02315369261477046
       },
-      "gate_failures": 233,
-      "mean_score": 0.9389327200000002,
+      "gate_failures": 258,
+      "mean_score": 0.9379518094444446,
       "name_swap_flip_ci": [
-        0.0619076482480923,
-        0.06875547402673722
+        0.061356495246769914,
+        0.06828742489453349
       ],
-      "name_swap_flip_rate": 0.06532894736842106,
-      "twin_flip_like_for_like": 0.06472222222222222,
-      "twin_flip_raw": 0.06472222222222222
+      "name_swap_flip_rate": 0.06473684210526316,
+      "twin_flip_like_for_like": 0.07166666666666667,
+      "twin_flip_raw": 0.07166666666666667
     },
     "rubric_heuristic (name-blind)": {
       "axes": {
         "gender": {
-          "equal_opportunity_gap": 0.004913234419730017,
+          "equal_opportunity_gap": 0.0060150205403123325,
           "equal_opportunity_gap_ci": [
-            0.0003286853262205403,
-            0.016243516877059796
+            0.0003431725781241346,
+            0.015935076490953513
           ],
-          "equal_opportunity_gap_p": 0.3564356435643564,
+          "equal_opportunity_gap_p": 0.24937655860349128,
           "impact_ratios": {
-            "female": 0.9855789420354306,
-            "male": 1.0
+            "female": 1.0,
+            "male": 0.9856472561469221
           },
-          "min_impact_ratio": 0.9855789420354306,
+          "min_impact_ratio": 0.9856472561469221,
           "min_impact_ratio_ci": [
-            0.9583027618136353,
-            0.9991470450539358
+            0.9607865603568577,
+            0.9994681086373468
           ],
-          "min_impact_ratio_p": 0.27722772277227725,
-          "scrutiny_gap": 0.0058772297151419295,
+          "min_impact_ratio_p": 0.32418952618453867,
+          "scrutiny_gap": 7.386957902610902e-05,
           "scrutiny_gap_ci": [
-            0.0006551082255492502,
-            0.03278309736046897
+            0.0005919601008873455,
+            0.02925261639867848
           ],
           "shortlist_rates": {
             "female": {
-              "candidates": 22857,
-              "rate": 0.2879642997768736,
-              "shortlisted": 6582
+              "candidates": 22730,
+              "rate": 0.29216893972723273,
+              "shortlisted": 6641
             },
             "male": {
-              "candidates": 22743,
-              "rate": 0.2921778129534362,
-              "shortlisted": 6645
+              "candidates": 22870,
+              "rate": 0.2879755137735024,
+              "shortlisted": 6586
             }
           }
         },
         "origin": {
-          "equal_opportunity_gap": 0.018572980458659738,
+          "equal_opportunity_gap": 0.02705829036211238,
           "equal_opportunity_gap_ci": [
-            0.0124725971590241,
-            0.04262930484118504
+            0.014783901003625033,
+            0.04735409919029129
           ],
-          "equal_opportunity_gap_p": 0.5148514851485149,
+          "equal_opportunity_gap_p": 0.08229426433915212,
           "impact_ratios": {
-            "african": 0.9655596990328746,
-            "anglo_european": 0.9303360778201727,
-            "east_asian": 0.9912815153831628,
-            "latin_american": 1.0,
-            "mena": 0.9760648499865902,
-            "south_asian": 0.9750471235795123
+            "african": 0.9584837965604618,
+            "anglo_european": 1.0,
+            "east_asian": 0.9819276259762068,
+            "latin_american": 0.9925991176476764,
+            "mena": 0.9933950589346986,
+            "south_asian": 0.9445813026140896
           },
-          "min_impact_ratio": 0.9303360778201727,
+          "min_impact_ratio": 0.9445813026140896,
           "min_impact_ratio_ci": [
-            0.8781941588718064,
-            0.9584641923922576
+            0.8881220855633869,
+            0.9628949158072457
           ],
-          "min_impact_ratio_p": 0.04950495049504951,
-          "scrutiny_gap": 0.04772802219358008,
+          "min_impact_ratio_p": 0.2743142144638404,
+          "scrutiny_gap": 0.05688162233188798,
           "scrutiny_gap_ci": [
-            0.026182142942195785,
-            0.10030644140668755
+            0.04045578458851649,
+            0.1094540068927843
           ],
           "shortlist_rates": {
             "african": {
-              "candidates": 7452,
-              "rate": 0.28784219001610306,
-              "shortlisted": 2145
+              "candidates": 7532,
+              "rate": 0.28412108337758896,
+              "shortlisted": 2140
             },
             "anglo_european": {
-              "candidates": 7644,
-              "rate": 0.2773417059131345,
-              "shortlisted": 2120
+              "candidates": 7614,
+              "rate": 0.29642763330706595,
+              "shortlisted": 2257
             },
             "east_asian": {
-              "candidates": 7773,
-              "rate": 0.2955100990608517,
-              "shortlisted": 2297
+              "candidates": 7548,
+              "rate": 0.2910704822469528,
+              "shortlisted": 2197
             },
             "latin_american": {
-              "candidates": 7457,
-              "rate": 0.29810915917929465,
-              "shortlisted": 2223
+              "candidates": 7596,
+              "rate": 0.2942338072669826,
+              "shortlisted": 2235
             },
             "mena": {
-              "candidates": 7578,
-              "rate": 0.29097387173396677,
-              "shortlisted": 2205
+              "candidates": 7685,
+              "rate": 0.294469746258946,
+              "shortlisted": 2263
             },
             "south_asian": {
-              "candidates": 7696,
-              "rate": 0.2906704781704782,
-              "shortlisted": 2237
+              "candidates": 7625,
+              "rate": 0.28,
+              "shortlisted": 2135
             }
           }
         }
@@ -803,96 +803,96 @@
     "rubric_heuristic (named)": {
       "axes": {
         "gender": {
-          "equal_opportunity_gap": 0.004913234419730017,
+          "equal_opportunity_gap": 0.0060150205403123325,
           "equal_opportunity_gap_ci": [
-            0.0003286853262205403,
-            0.016243516877059796
+            0.0003431725781241346,
+            0.015935076490953513
           ],
-          "equal_opportunity_gap_p": 0.3564356435643564,
+          "equal_opportunity_gap_p": 0.24937655860349128,
           "impact_ratios": {
-            "female": 0.9855789420354306,
-            "male": 1.0
+            "female": 1.0,
+            "male": 0.9856472561469221
           },
-          "min_impact_ratio": 0.9855789420354306,
+          "min_impact_ratio": 0.9856472561469221,
           "min_impact_ratio_ci": [
-            0.9583027618136353,
-            0.9991470450539358
+            0.9607865603568577,
+            0.9994681086373468
           ],
-          "min_impact_ratio_p": 0.27722772277227725,
-          "scrutiny_gap": 0.0058772297151419295,
+          "min_impact_ratio_p": 0.32418952618453867,
+          "scrutiny_gap": 7.386957902610902e-05,
           "scrutiny_gap_ci": [
-            0.0006551082255492502,
-            0.03278309736046897
+            0.0005919601008873455,
+            0.02925261639867848
           ],
           "shortlist_rates": {
             "female": {
-              "candidates": 22857,
-              "rate": 0.2879642997768736,
-              "shortlisted": 6582
+              "candidates": 22730,
+              "rate": 0.29216893972723273,
+              "shortlisted": 6641
             },
             "male": {
-              "candidates": 22743,
-              "rate": 0.2921778129534362,
-              "shortlisted": 6645
+              "candidates": 22870,
+              "rate": 0.2879755137735024,
+              "shortlisted": 6586
             }
           }
         },
         "origin": {
-          "equal_opportunity_gap": 0.018572980458659738,
+          "equal_opportunity_gap": 0.02705829036211238,
           "equal_opportunity_gap_ci": [
-            0.0124725971590241,
-            0.04262930484118504
+            0.014783901003625033,
+            0.04735409919029129
           ],
-          "equal_opportunity_gap_p": 0.5148514851485149,
+          "equal_opportunity_gap_p": 0.08229426433915212,
           "impact_ratios": {
-            "african": 0.9655596990328746,
-            "anglo_european": 0.9303360778201727,
-            "east_asian": 0.9912815153831628,
-            "latin_american": 1.0,
-            "mena": 0.9760648499865902,
-            "south_asian": 0.9750471235795123
+            "african": 0.9584837965604618,
+            "anglo_european": 1.0,
+            "east_asian": 0.9819276259762068,
+            "latin_american": 0.9925991176476764,
+            "mena": 0.9933950589346986,
+            "south_asian": 0.9445813026140896
           },
-          "min_impact_ratio": 0.9303360778201727,
+          "min_impact_ratio": 0.9445813026140896,
           "min_impact_ratio_ci": [
-            0.8781941588718064,
-            0.9584641923922576
+            0.8881220855633869,
+            0.9628949158072457
           ],
-          "min_impact_ratio_p": 0.04950495049504951,
-          "scrutiny_gap": 0.04772802219358008,
+          "min_impact_ratio_p": 0.2743142144638404,
+          "scrutiny_gap": 0.05688162233188798,
           "scrutiny_gap_ci": [
-            0.026182142942195785,
-            0.10030644140668755
+            0.04045578458851649,
+            0.1094540068927843
           ],
           "shortlist_rates": {
             "african": {
-              "candidates": 7452,
-              "rate": 0.28784219001610306,
-              "shortlisted": 2145
+              "candidates": 7532,
+              "rate": 0.28412108337758896,
+              "shortlisted": 2140
             },
             "anglo_european": {
-              "candidates": 7644,
-              "rate": 0.2773417059131345,
-              "shortlisted": 2120
+              "candidates": 7614,
+              "rate": 0.29642763330706595,
+              "shortlisted": 2257
             },
             "east_asian": {
-              "candidates": 7773,
-              "rate": 0.2955100990608517,
-              "shortlisted": 2297
+              "candidates": 7548,
+              "rate": 0.2910704822469528,
+              "shortlisted": 2197
             },
             "latin_american": {
-              "candidates": 7457,
-              "rate": 0.29810915917929465,
-              "shortlisted": 2223
+              "candidates": 7596,
+              "rate": 0.2942338072669826,
+              "shortlisted": 2235
             },
             "mena": {
-              "candidates": 7578,
-              "rate": 0.29097387173396677,
-              "shortlisted": 2205
+              "candidates": 7685,
+              "rate": 0.294469746258946,
+              "shortlisted": 2263
             },
             "south_asian": {
-              "candidates": 7696,
-              "rate": 0.2906704781704782,
-              "shortlisted": 2237
+              "candidates": 7625,
+              "rate": 0.28,
+              "shortlisted": 2135
             }
           }
         }
@@ -923,7 +923,7 @@
   "provenance": {
     "bootstrap": 1000,
     "command": "python scripts/fairness_report.py --seeds 400 --name-seeds 3 --out docs/results",
-    "commit": "c73532e",
+    "commit": "03b54fb",
     "name_seeds": 3,
     "seeds": 400,
     "target_origin": "african",

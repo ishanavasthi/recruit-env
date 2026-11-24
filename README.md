@@ -212,13 +212,13 @@ Results (400 seeds per task × 3 name draws; full tables in [docs/results/fairne
 
 | Policy | Score | Name-swap flips | Twin flips (like-for-like) | Lowest impact ratio (origin) | EO gap (origin) | Flagged |
 |---|---|---|---|---|---|---|
-| Oracle | 0.999 | 0.000 | 0.000 | 0.951 | 0.000 | none |
-| Rubric heuristic, name-blind | 0.910 | 0.000 | 0.000 | 0.930 | 0.019 | none |
-| Rubric heuristic, named | 0.910 | 0.000 | 0.000 | 0.930 | 0.019 | none |
-| Planted bias, strong (p = 0.5) | 0.939 | 0.065 | 0.065 | **0.470** | **0.513** | name-swap, adverse impact, equal opportunity |
-| Planted bias, mild (p = 0.1) | 0.986 | 0.014 | 0.016 | 0.865 | **0.103** | name-swap, equal opportunity |
+| Oracle | 0.999 | 0.000 | 0.000 | 0.953 | 0.000 | none |
+| Rubric heuristic, name-blind | 0.910 | 0.000 | 0.000 | 0.945 | 0.027 | none |
+| Rubric heuristic, named | 0.910 | 0.000 | 0.000 | 0.945 | 0.027 | none |
+| Planted bias, strong (p = 0.5) | 0.938 | 0.065 | 0.072 | **0.485** | **0.502** | name-swap, adverse impact, equal opportunity |
+| Planted bias, mild (p = 0.1) | 0.985 | 0.015 | 0.017 | 0.871 | **0.106** | name-swap, equal opportunity |
 
-Both planted policies are flagged within 50 seeds per task. The mild one barely changes the task score (0.986), which is the point: a task score alone cannot reveal it.
+Both planted policies are flagged within 50 seeds per task. The mild one barely changes the task score (0.985), which is the point: a task score alone cannot reveal it.
 
 ---
 
