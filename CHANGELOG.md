@@ -29,7 +29,7 @@ Breaking changes to the package layout, the server and the agent scripts. Design
 - `inference.py` runs in process by default and against a server with `--url`. It logs every episode.
 - `baseline/run_baseline.py` (decide-only: Python gathers, the model decides once) also runs in process and logs.
 - **No substitute actions.** Both used to replace an unusable model reply with a fallback ("hold" the next candidate, or the rubric's own decisions), so a reported model score could be partly another policy's. Now a model error, an unparseable reply or a reply cut off by the token cap is retried (a cut-off doubles the cap, up to 32,000), and when retries run out the episode is reported as incomplete.
-- **Token cap.** The default cap rose from 512 to 16,000. With 512, every pilot episode of Claude Haiku 5.5 and Sonnet 5.5 hit empty replies cut off while the model was still reasoning; decision steps use 4,000–7,500 completion tokens.
+- **Token cap.** The default cap rose from 512 to 16,000. With 512, every pilot episode of Claude Haiku 5.5 and Sonnet 5.5 hit empty replies cut off while the model was still reasoning. At 16,000, every pilot episode completed with no cut-off, and decision steps used up to about 7,500 completion tokens.
 
 ### Benchmarks and training (#12, in part)
 
@@ -38,7 +38,15 @@ Breaking changes to the package layout, the server and the agent scripts. Design
 
 ### Correction to 3.0.0's published model scores
 
-The 3.0.0 pull request reported Claude Sonnet 5.5 (decide-only) at 0.999 / 0.999 / 0.40 and Claude Haiku 5.5 (step by step) at 0.34 on medium and 0.33 on hard. Those runs used token caps of 4,000 and 512 and the fallbacks above, so they cannot be attributed to the models: Sonnet's easy and medium scores equal the rubric fallback's at that seed, and the Haiku runs were cut off at the cap. They are withdrawn; [docs/results/baselines.md](docs/results/baselines.md) replaces them.
+The 3.0.0 pull request reported model scores that are now withdrawn:
+- Claude Sonnet 5.5, decide-only: 0.999, 0.999 and 0.40.
+- Claude Haiku 5.5, step by step: 0.34 on medium and 0.33 on hard.
+
+Both scripts then substituted a fallback for an unusable reply, and their output did not record whether the fallback fired.
+- **Haiku.** At the step-by-step script's 512-token cap, a pilot of the same models on 2026-11-25 returned empty, cut-off replies within the first few steps of every episode. Each of those would have become a fallback "hold".
+- **Sonnet.** The decide-only script's 4,000-token cap is below what a decision step used in the pilot (up to about 7,500 completion tokens), so its scores may be the rubric fallback's.
+
+[docs/results/baselines.md](docs/results/baselines.md) replaces these numbers.
 
 ## 3.0.0
 
