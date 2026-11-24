@@ -26,4 +26,4 @@ recruitenv-server = "server.app:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["recruitenv*", "server*", "baseline*"]
+include = ["recruitenv*", "server*"]

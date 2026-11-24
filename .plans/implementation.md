@@ -10,22 +10,34 @@
 | 3 | Fairness audit: names table, twins, name-swap replays, metrics with CIs | Done (3.0.0) | PR #14 |
 | — | Verifier checks and gates (#7) | Done (3.0.0) | PR #14 |
 | — | Hugging Face Space redeployed to 3.0.0 | Done 2026-11-25 | Space commit `3e29bbe` |
-| 4 | Standalone core, OpenEnv adapter, concurrency (#11) | In progress | PR C |
-| — | JSONL transition logs and replay (#8) | In progress | PR C |
-| 5 | Baseline table and training example (#12) | In progress | PR C; the GPU reward curve awaits the owner's choice of Colab or HF Jobs |
+| 4 | Standalone core, OpenEnv adapter, concurrency (#11) | Done (4.0.0) | PR C |
+| — | JSONL transition logs and replay (#8) | Done (4.0.0) | PR C |
+| 5 | Baseline table and training example (#12) | Mostly done (4.0.0); the GPU reward curve awaits the owner's choice of Colab or HF Jobs | PR C |
 | 6 | Public face: README, results page, report, demo, PyPI | Not started | PR D |
 | 7 | Extensions (#2 ranking, #3 reasons, per-action costs, …) | Not started | later |
 
-## What exists (3.0.0)
+## What exists (4.0.0)
 
-- **Core:** `env/` holds the environment, generator, rubric, names, fairness and reference policies. `tasks/` holds three task configs and graders.
-- **HTTP API:** `api/main.py` (FastAPI) exposes `/reset`, `/step`, `/state`, `/grader` and `/baseline`. It runs one global episode and serves the Space.
-- **Agents:** `inference.py` (step by step, through an OpenAI-compatible endpoint) and `baseline/run_baseline.py` (Python gathers the evidence, then one model call per task).
-- **Evidence scripts:** `scripts/probe_scoring.py`, `scripts/difficulty_sweep.py` and `scripts/fairness_report.py`, which writes `docs/results/fairness.{json,md}`.
-- **Tests:** 204, including the scoring contract and acceptance criteria.
+- **Core (`recruitenv/`, depends on pydantic and numpy only):**
+  - environment, generator, rubric, names, fairness and reference policies;
+  - `trajectory.py` (JSONL logs and replay) and `tools.py` (the TRL tool environment);
+  - `tasks/`.
+- **OpenEnv (the `openenv` extra):**
+  - `openenv_adapter.py` and `client.py`;
+  - `server/app.py`, which the Space runs: one environment per `/ws` session, the Task API, `/tasks` and `/baseline`.
+- **Agents:**
+  - `inference.py`, step by step;
+  - `baseline/run_baseline.py`, decide-only.
+
+  Both run in process, log every episode, and have no fallback.
+- **Evidence:**
+  - `scripts/run_benchmark.py` and `baselines_report.py` write `docs/results/baselines.md`;
+  - `scripts/fairness_report.py`, `probe_scoring.py` and `difficulty_sweep.py`;
+  - `scripts/replay.py`.
+- **Training:** `examples/train_grpo.py`, not yet run, because it needs a GPU.
 
 ## Integrations
 
 - **Hugging Face Space:** `heyavasthi/recruitenv`, a Docker Space on port 7860, running 3.0.0.
 - **Model access for evaluation:** an OpenAI-compatible proxy on the development server. Claude Sonnet 5.5 and Haiku 5.5 have been run.
-- **OpenEnv:** being reworked in PR C. The old `openenv-core` client is out of date.
+- **OpenEnv 0.14:** `openenv validate --url` passes every check, and static validation passes the manifest check.

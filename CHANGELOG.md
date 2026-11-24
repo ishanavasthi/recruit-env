@@ -1,5 +1,45 @@
 # Changelog
 
+## 4.0.0
+
+Breaking changes to the package layout, the server and the agent scripts. Design: [docs/superpowers/specs/2026-11-25-standalone-core-logs-baselines-design.md](docs/superpowers/specs/2026-11-25-standalone-core-logs-baselines-design.md) (roadmap Phases 4 and 5). The task, generator, rubric and graders are unchanged: the pinned generator hashes and acceptance numbers are identical.
+
+### A standalone library (#11)
+
+- `env/` and `tasks/` are now one package, `recruitenv` (`recruitenv.tasks` for the tasks). The root `models.py`, `__init__.py`, `client.py` and `server/models.py` are gone.
+- The core depends only on `pydantic` and `numpy` and runs in process: `RecruitmentEnvironment().reset(...)`, `.step(...)`, `.grade_report()`. A test checks that it imports no web, OpenEnv or model-client module.
+- Extras: `openenv` (server and typed client), `agents` (model agents), `dev`.
+
+### OpenEnv adapter and server (#11)
+
+- `server/app.py` serves the core through `openenv.core.create_app` (openenv 0.14): one environment per `/ws` session, up to `MAX_CONCURRENT_ENVS` (default 16), with the Task API under `/recruitenv/`, `/health`, `/schema`, `/metadata` and `/mcp`. `GET /tasks` and `GET /baseline` remain.
+- `recruitenv/openenv_adapter.py` defines a flat `RecruitAction`, `RecruitObservation` (the grade report is in `metadata["grade"]` on the terminal step), `RecruitState` and the reset parameters `task`, `seed`, `name_seed`, `name_blind`.
+- `recruitenv/client.py` is a typed `EnvClient`.
+- **Removed:** the custom FastAPI app (`api/`) and its stateful `POST /reset`, `POST /step` and `POST /grader`. OpenEnv's HTTP routes are stateless; episodes run over `/ws` or in process. `v1.0.0` and `v3.0.0` remain available by tag.
+- `openenv.yaml` has a `validation:` block. `openenv validate --url` passes every check; `--level static` passes the manifest check (the other static checks are not implemented in openenv 0.14, so the verdict is WARN with exit 0). CI runs the static check.
+- Concurrency tests: two sessions on the same seed with different name draws, interleaved in process, threaded, and over two websockets, each match a solo run.
+
+### Transition logs and replay (#8)
+
+- `recruitenv/trajectory.py`: `LoggedEnvironment` writes one JSONL file per episode (header, one record per step with the action, what it revealed and an observation hash, and a final grade record).
+- `scripts/replay.py` replays logs and checks every observation and the grade reproduce exactly; it refuses logs from another generator or package version.
+
+### Agents without fallbacks
+
+- `inference.py` runs in process by default and against a server with `--url`. It logs every episode.
+- `baseline/run_baseline.py` (decide-only: Python gathers, the model decides once) also runs in process and logs.
+- **No substitute actions.** Both used to replace an unusable model reply with a fallback ("hold" the next candidate, or the rubric's own decisions), so a reported model score could be partly another policy's. Now a model error, an unparseable reply or a reply cut off by the token cap is retried (a cut-off doubles the cap, up to 32,000), and when retries run out the episode is reported as incomplete.
+- **Token cap.** The default cap rose from 512 to 16,000. With 512, every pilot episode of Claude Haiku 5.5 and Sonnet 5.5 hit empty replies cut off while the model was still reasoning; decision steps use 4,000–7,500 completion tokens.
+
+### Benchmarks and training (#12, in part)
+
+- `scripts/run_benchmark.py` runs a policy or a model over seeds and tasks, resumably, and stops scheduling on repeated rate limiting. `scripts/baselines_report.py` writes [docs/results/baselines.md](docs/results/baselines.md) with bootstrap intervals, seed counts and incomplete episodes.
+- `recruitenv/tools.py`: a tool-per-action environment matching TRL's `GRPOTrainer(environment_factory=...)`. `examples/train_grpo.py` is a uv script for a GPU (Colab or HF Jobs). The reward curve from a real run is still to come.
+
+### Correction to 3.0.0's published model scores
+
+The 3.0.0 pull request reported Claude Sonnet 5.5 (decide-only) at 0.999 / 0.999 / 0.40 and Claude Haiku 5.5 (step by step) at 0.34 on medium and 0.33 on hard. Those runs used token caps of 4,000 and 512 and the fallbacks above, so they cannot be attributed to the models: Sonnet's easy and medium scores equal the rubric fallback's at that seed, and the Haiku runs were cut off at the cap. They are withdrawn; [docs/results/baselines.md](docs/results/baselines.md) replaces them.
+
 ## 3.0.0
 
 Breaking changes to the task, the verifier and the API. The design is in [docs/superpowers/specs/2026-11-24-real-task-and-fairness-audit-design.md](docs/superpowers/specs/2026-11-24-real-task-and-fairness-audit-design.md) (roadmap Phases 2 and 3).

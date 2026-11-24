@@ -1,6 +1,6 @@
 """Scoreboard of the reference policies (read-only).
 
-Plays every reference policy in ``env/policies.py`` on every task and prints
+Plays every reference policy in ``recruitenv/policies.py`` on every task and prints
 the mean score and the share of seeds that pass the task's success
 threshold. The 1.0.0 findings in docs/research/2026-11-21-findings-and-roadmap.md
 came from an earlier version of this script (tag ``v1.0.0``). Acceptance

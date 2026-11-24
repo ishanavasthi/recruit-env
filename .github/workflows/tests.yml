@@ -24,3 +24,5 @@ jobs:
         run: pytest tests -q
       - name: Package builds
         run: pip install build && python -m build
+      - name: OpenEnv manifest
+        run: openenv validate --level static .
