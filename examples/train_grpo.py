@@ -22,6 +22,17 @@ Run on a GPU:
 
 or in Colab: ``!pip install uv && uv run examples/train_grpo.py``.
 
+CPU smoke test of the whole pipeline (no learning; a random tiny model makes
+no tool calls, so the reward stays at the floor). Checked on 2026-11-25 with
+TRL 1.18.2, transformers 5.24.1 and torch 2.15 (CPU), about 30 seconds:
+
+    uv run examples/train_grpo.py --cpu --episodes 8 \
+        --model trl-internal-testing/tiny-Qwen3MoeForCausalLM
+
+TRL must recognise the model's chat template to parse tool calls:
+Qwen2.5-Instruct and TRL's tiny Qwen3 MoE test model work;
+``tiny-Qwen3ForCausalLM`` does not.
+
 It writes ``reward_curve.csv`` (step, mean reward) to the output directory.
 A 0.5B model rarely calls tools well at first; expect a flat start, and see
 TRL's notes on a short SFT warm-up if every group gets identical rewards.

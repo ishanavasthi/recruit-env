@@ -67,8 +67,8 @@ Also observed:
 ### 1. Package (delegate)
 
 - `env/` and `tasks/` move to `recruitenv/` (`recruitenv/tasks/` for the tasks), with no compatibility shims, since nothing outside the repo imports them. The rename is its own commit: `git mv` plus import changes only. The full suite, the pinned generator hashes and the acceptance numbers must be unchanged before anything else changes.
-- Root `models.py`, `__init__.py` and `server/models.py` existed only for the old OpenEnv layout and are removed. `server/app.py` becomes the OpenEnv server entry point.
-- `openenv>=0.14,<0.15` moves to an optional extra, `[openenv]`, and the `openenv-core` dependency is dropped. Runtime dependencies shrink to `pydantic` and `numpy`. The server extra adds `fastapi` and `uvicorn`, and the agents extra adds `openai`, `httpx` and `python-dotenv`.
+- Root `models.py`, `__init__.py`, `client.py` and `server/models.py` existed only for the old OpenEnv layout and are removed. The server is `recruitenv/server.py`, inside the one import package (delegate, review round 1). `server/app.py` remains as an unpackaged shim for `uvicorn server.app:app`.
+- `openenv>=0.14,<0.15` moves to an optional extra, `[openenv]`, with `uvicorn`, and the `openenv-core` dependency is dropped. Runtime dependencies shrink to `pydantic` and `numpy`. The `[agents]` extra adds `openai` and `python-dotenv`. FastAPI comes with `openenv`, so there is no separate server extra (builder).
 
 ### 2. OpenEnv adapter and server (delegate)
 
@@ -77,7 +77,7 @@ Also observed:
   - `RecruitObservation`: the core observation's fields plus `reward` and `done`. The grade report goes in `metadata["grade"]` on the terminal step only.
   - `RecruitState`.
   - `RecruitEnvironment(Environment)`: `reset(seed, episode_id, task="easy", name_seed=0, name_blind=False)` and the Task API (`list_tasks` and `get_task` over easy, medium and hard).
-- `server/app.py` calls `create_app(..., env_name="recruitenv", max_concurrent_envs=N)`. It keeps `/tasks` and `/baseline` as extra routes and sets the metadata (name, description, README, version).
+- `recruitenv/server.py` calls `create_app(..., env_name="recruitenv", max_concurrent_envs=N)`. It keeps `/tasks` and `/baseline` as extra routes and sets the metadata (name, description, README, version).
 - The old `api/` package is deleted. The Space's Dockerfile runs the new server on port 7860.
 - `recruitenv/client.py` defines `RecruitEnvClient(EnvClient[...])` and is importable only with the extra.
 - `openenv.yaml` gets a `validation:` block. Today a static pass reads WARN with exit 0, because the build checks are skipped, and the PR says so plainly.
@@ -91,7 +91,7 @@ Also observed:
 
 ### 4. Ground-truth leak test (delegate)
 
-- The scoring-contract test that no agent-reachable surface shows ground truth before the episode ends is extended to cover:
+- The test that no agent-reachable surface shows ground truth before the episode ends moves to `tests/test_server.py` and covers:
   - websocket observations before the terminal step;
   - `/state`;
   - the Task API routes;
@@ -106,7 +106,7 @@ Also observed:
 - **Final:** the full grade report, including checks and gates.
 
 `scripts/replay.py <log>` works in four stages:
-1. Reads the header and refuses if `generator_version` or the package version differs (delegate).
+1. Reads the header and refuses if `generator_version` differs. A different package version is replayed, and named in the error only if the replay diverges. The delegate first asked to refuse both, then reversed it in review round 1: refusing on the package version would invalidate every committed log at the next release.
 2. Resets with the logged parameters.
 3. Replays every action, checking each hash.
 4. Checks that the score and checks match exactly.
@@ -118,7 +118,10 @@ Logging is on by default in `inference.py`, `baseline/run_baseline.py` and `scri
 ### 6. Agents (builder)
 
 - `inference.py` runs in process by default. `--url` switches to the websocket client.
-- Silent fallbacks are removed. Model or parse errors retry with backoff. When retries run out, the episode is marked incomplete, not finished with a substitute action.
+- Silent fallbacks are removed.
+- Per step, up to 4 replies are allowed. A reply cut off by the token cap doubles the cap (16,000 by default, to at most 32,000), and an unparseable reply is retried with a correction note.
+- Failed requests have their own budget: 8 attempts, backing off up to a minute (delegate, review round 1), so a brief proxy outage does not discard a long episode.
+- When either budget runs out, the episode is marked incomplete, not finished with a substitute action.
 - A rejected action still costs no budget and is fed back to the model, capped as before.
 
 ### 7. Baseline table (#12)
@@ -137,14 +140,29 @@ Model logs are committed under `docs/results/runs/`. Policy logs are regenerable
 ### 8. Training example (#12, partial)
 
 - `recruitenv/tools.py` defines `RecruitToolEnv`: a no-argument constructor, `reset(**kw) -> str`, and one typed, docstringed method per action (`read_resume`, `check_github`, `check_leetcode`, `check_kaggle`, `shortlist`, `hold`, `reject`), plus `get_reward()`. It matches TRL's `environment_factory` contract (TRL ≥ 1.9).
+- `get_reward()` plays an unfinished episode out to the budget and grades it (delegate, review round 1). On hard the episode ends only at the budget, so an agent that shortlists and stops would otherwise always get 0.
 - It is unit-tested without TRL installed.
-- `examples/train_grpo.py` is a PEP 723 uv script (`trl>=1.9,<2`, `transformers>=5.2`) for Qwen2.5-0.5B-Instruct. It runs with `uv run` on Colab or with `hf jobs uv run`. It is not run in this PR.
+- `examples/train_grpo.py` is a PEP 723 uv script (`trl>=1.9,<2`, `transformers>=5.2`) for Qwen2.5-0.5B-Instruct. It runs with `uv run` on Colab or with `hf jobs uv run`.
+- In this PR it was run only as a CPU smoke test with TRL's tiny Qwen3 MoE model, which exercises the whole pipeline but does no learning.
 
 ## Budget (delegate)
 
 - The model runs come last, after the code is reviewed.
 - A pilot of 2 seeds × 3 tasks × 2 models measures calls, tokens and time. The seed count and concurrency are then set against a hard budget, starting below 8.
 - If the budget cuts a run short, the table ships with the actual seed counts.
+
+### Pilot (2026-11-25)
+
+Two Claude models, one seed per task, step by step, at a 16,000-token cap. Every episode completed, with no cut-off replies, API errors or parse failures.
+
+| Model | easy | medium | hard | Tokens per episode (prompt + completion) | Minutes per episode |
+|---|---|---|---|---|---|
+| Claude Haiku 5.5 | 0.615 | 0.48 | 0.40 | 250k–440k | 5–13 |
+| Claude Sonnet 5.5 | 0.999 | 0.999 | 0.60 | 190k–300k | 4–8 |
+
+Decision steps used up to about 7,500 completion tokens. An earlier pilot at the old 512-token cap cut off every episode.
+
+The delegate set the first tranche at 10 seeds per task per model and concurrency 3 per model. Extending it to 20 seeds depends on there being no rate limiting.
 
 ## Done when
 
