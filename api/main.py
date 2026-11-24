@@ -34,7 +34,7 @@ from tasks import TASK_REGISTRY
 
 logger = logging.getLogger("recruitenv.api")
 
-VERSION = "2.0.0"
+VERSION = "3.0.0"
 
 # TypeAdapter for the Action discriminated union's JSON Schema
 _action_adapter = TypeAdapter(Action)

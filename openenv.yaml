@@ -1,9 +1,9 @@
 name: RecruitEnv
-version: "2.0.0"
+version: "3.0.0"
 description: >
-  RL environment simulating candidate pipeline triage.
-  An agent reviews synthetic candidate profiles and makes shortlisting
-  decisions against a job description.
+  RL environment for candidate pipeline triage. An agent reveals evidence
+  under a step budget and decides each candidate against a job description,
+  scored by a published rubric, with a counterfactual fairness audit.
 
 entry_point: api.main:app
 port: 7860
@@ -11,8 +11,8 @@ space_url: "https://huggingface.co/spaces/heyavasthi/recruitenv"
 
 tasks:
   - id: easy
-    description: Screening Sprint (10 candidates, pick top 3)
+    description: Screening Sprint (10 candidates, shortlist 3, 62 steps; a full read fits)
   - id: medium
-    description: Conflicted Signals (5 candidates, pick 2)
+    description: Conflicted Signals (8 candidates, shortlist 3, two conflicted, 50 steps)
   - id: hard
-    description: Batch Triage (20 candidates, tight budget, pick 5)
+    description: Batch Triage (20 candidates, shortlist 5, 50 steps; must prioritise)

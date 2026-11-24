@@ -116,19 +116,41 @@ def _error_detail(r: httpx.Response) -> str:
 # Prompts
 # ---------------------------------------------------------------------------
 
+RUBRIC_GUIDE = """How candidates are judged (the published hiring rubric):
+- Sources: github, leetcode, kaggle, the resume's experience section and its
+  skills section. The education section is never used.
+- technical: the role-weighted mean of the github, leetcode and kaggle
+  sub-scores minus their spread (strength must be corroborated). Kaggle
+  weighs most for ML and data roles, least for frontend/backend.
+- experience: resume years, counted only up to GitHub years_active + 1.5,
+  measured against the job's experience_years.
+- growth: half GitHub activity (streak, contributions), half LeetCode
+  practice volume (problems solved).
+- skills: share of the job's required skills (and, less, nice-to-have
+  skills) listed in the resume's skills section. It multiplies the rest, so
+  a candidate missing the required skills ranks low.
+- total = (weight_technical*technical + weight_experience*experience +
+  weight_growth*growth) * skill factor, using the job description's weights.
+
+The pool is ranked by total: the top `quotas.shortlist` candidates are
+shortlist, the bottom `quotas.reject` are reject, the rest are hold.
+Identical candidates must get identical decisions. Names carry no
+information about ability."""
+
 SYSTEM_PROMPT = """You are a hiring agent screening candidates for one job.
-Each step you take ONE action. Gathering information costs a step, and the
+Each step you take ONE action. Revealing a source costs a step, and the
 episode ends when every candidate has a decision or the step budget runs out.
-An undecided candidate earns no credit, so leave enough steps to decide everyone.
 
 Actions (respond with ONE JSON object only, no explanation, no markdown):
 1. {"type": "check_platform", "candidate_id": "...", "platform": "github|leetcode|kaggle"}
 2. {"type": "read_resume_section", "candidate_id": "...", "section": "education|experience|skills"}
 3. {"type": "make_decision", "candidate_id": "...", "decision": "shortlist|hold|reject"}
 
-Decisions are final. Shortlist only the strongest candidates for the role,
-reject clearly weak ones, and hold the rest. Base each decision on the data
-you have revealed."""
+""" + RUBRIC_GUIDE + """
+
+Decide each candidate by the rubric. Decisions are final. Candidates you
+never decide earn no credit, except on the hard task where an undecided
+candidate simply counts as not shortlisted."""
 
 
 def build_user_prompt(step: int, observation: dict, history: list[str]) -> str:
@@ -142,6 +164,7 @@ def build_user_prompt(step: int, observation: dict, history: list[str]) -> str:
         f"Step {step}. Steps remaining: {observation.get('steps_remaining', 0)}. "
         f"Undecided candidates: {len(undecided)}.\n"
         f"Job: {json.dumps(jd, separators=(',', ':'))}\n"
+        f"Quotas: {json.dumps(observation.get('quotas', {}))}\n"
         f"Candidates: {json.dumps(observation.get('candidates_summary', []), separators=(',', ':'))}\n"
         f"Revealed data: {json.dumps(observation.get('revealed_data', {}), separators=(',', ':'))}\n"
         f"Decisions made: {json.dumps(observation.get('decisions_made', {}))}\n"
