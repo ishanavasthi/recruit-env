@@ -1,47 +1,63 @@
 """
-RecruitEnv LLM inference script
-===============================
+RecruitEnv model agent
+======================
 
-Plays one episode against a running RecruitEnv server with an
-OpenAI-compatible chat model, then reports the score from ``POST /grader``.
+Plays episodes step by step with an OpenAI-compatible chat model. Runs the
+environment in process by default; ``--url`` plays against a running server
+over its websocket instead. Every local episode is logged as JSONL (see
+``recruitenv.trajectory``) and can be replayed with ``scripts/replay.py``.
+
+    python inference.py --task hard --seed 3 --model claude-sonnet-5-5
+    python inference.py --task easy --url http://localhost:7860
 
 Environment variables:
     API_BASE_URL   OpenAI-compatible endpoint (default: Hugging Face router)
-    MODEL_NAME     Model identifier (default: gpt-4o-mini)
-    HF_TOKEN       API key (or API_KEY)
-    ENV_URL        RecruitEnv server URL (default: http://localhost:7860)
-    TASK           Task id: easy | medium | hard (default: easy)
-    SEED           Episode seed (default: 42)
-    MAX_TOKENS     Completion token cap per call (default: 512)
+    API_KEY        API key (HF_TOKEN is also read)
+    MODEL_NAME     default model (default: gpt-4o-mini)
 
-Output lines: one [START], one [STEP] per environment step, one [END]
-with the grader's score.
+No fallback actions: a model error, an unparseable reply or a reply cut off
+by the token cap is retried (a cut-off reply doubles the cap, up to
+``--max-tokens-ceiling``). When retries run out the episode is reported as
+incomplete, never finished by a substitute policy.
+
+Output lines: one [START], one [STEP] per environment step, one [END] with
+the grader's score.
 """
 
 from __future__ import annotations
 
-import asyncio
+import argparse
 import json
 import os
 import re
-from collections.abc import Callable
-from typing import Any, Optional
+import sys
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable, Optional
 
-import httpx
+from pydantic import TypeAdapter
+
+from recruitenv.environment import RecruitmentEnvironment
+from recruitenv.models import Action
+from recruitenv.trajectory import LoggedEnvironment
 
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 MODEL_NAME = os.getenv("MODEL_NAME") or "gpt-4o-mini"
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
-ENV_URL = os.getenv("ENV_URL") or "http://localhost:7860"
-TASK_NAME = os.getenv("TASK") or "easy"
-SEED = int(os.getenv("SEED") or "42")
 
 BENCHMARK = "recruitenv"
 TEMPERATURE = 0.1
-MAX_TOKENS = int(os.getenv("MAX_TOKENS") or "512")
+MAX_TOKENS = 16000          # reasoning models spend thousands of tokens before a decision
+MAX_TOKENS_CEILING = 32000
+MODEL_ATTEMPTS = 4          # per step: API errors, parse failures and cut-off replies
 
-# An action chooser maps (observation, history) to one action dict.
-ChooseAction = Callable[[dict, list[str]], dict]
+_ACTION = TypeAdapter(Action)
+
+
+class IncompleteEpisode(Exception):
+    """The agent could not produce a valid action; the episode has no score."""
+
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -54,69 +70,23 @@ def log_start(task: str, env: str, model: str) -> None:
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     error_val = error if error else "null"
-    done_val = str(done).lower()
-    print(
-        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
-        flush=True,
-    )
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error={error_val}",
+          flush=True)
 
 
-def log_end(success: bool, steps: int, score: float, rewards: list[float]) -> None:
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
-        flush=True,
-    )
-
-
-# ---------------------------------------------------------------------------
-# HTTP environment client
-# ---------------------------------------------------------------------------
-
-
-class EnvHTTPClient:
-    """Minimal async HTTP client for the RecruitEnv REST API."""
-
-    def __init__(self, base_url: str, transport: httpx.AsyncBaseTransport | None = None) -> None:
-        self._client = httpx.AsyncClient(
-            base_url=base_url.rstrip("/"), timeout=60.0, transport=transport,
-        )
-
-    async def reset(self, task_id: str, seed: int) -> dict:
-        r = await self._client.post("/reset", json={"task_id": task_id, "seed": seed})
-        r.raise_for_status()
-        return r.json()
-
-    async def step(self, action: dict) -> tuple[dict | None, str | None]:
-        """Return (result, None) on success or (None, error) for a rejected action."""
-        r = await self._client.post("/step", json=action)
-        if r.status_code in (400, 422):
-            return None, _error_detail(r)
-        r.raise_for_status()
-        return r.json(), None
-
-    async def grade(self) -> dict:
-        r = await self._client.post("/grader")
-        r.raise_for_status()
-        return r.json()
-
-    async def close(self) -> None:
-        await self._client.aclose()
-
-
-def _error_detail(r: httpx.Response) -> str:
-    try:
-        detail = r.json().get("detail", r.text)
-    except ValueError:
-        detail = r.text
-    return re.sub(r"\s+", " ", json.dumps(detail) if not isinstance(detail, str) else detail)[:200]
+def log_end(result: dict[str, Any]) -> None:
+    if result.get("incomplete"):
+        print(f"[END] incomplete=true reason={result.get('reason')!r} steps={result.get('steps', 0)}", flush=True)
+        return
+    print(f"[END] success={str(result['success']).lower()} steps={result['steps']} score={result['score']:.3f}",
+          flush=True)
 
 
 # ---------------------------------------------------------------------------
 # Prompts
 # ---------------------------------------------------------------------------
 
-RUBRIC_GUIDE = """How candidates are judged: the published hiring rubric (env/rubric.py).
+RUBRIC_GUIDE = """How candidates are judged: the published hiring rubric (recruitenv/rubric.py).
 Sources: github, leetcode, kaggle, the resume's experience section and its
 skills section. The education section is never used. h(x, s) = x / (x + s).
 
@@ -161,10 +131,8 @@ Decide each candidate by the rubric. Decisions are final. Candidates you
 never decide earn no credit, except on the hard task where an undecided
 candidate simply counts as not shortlisted."""
 
-
 def build_user_prompt(step: int, observation: dict, history: list[str]) -> str:
     history_block = "\n".join(history[-6:]) if history else "None"
-    jd = observation.get("job_description", {})
     undecided = [
         c["id"] for c in observation.get("candidates_summary", [])
         if c["id"] not in observation.get("decisions_made", {})
@@ -172,7 +140,7 @@ def build_user_prompt(step: int, observation: dict, history: list[str]) -> str:
     return (
         f"Step {step}. Steps remaining: {observation.get('steps_remaining', 0)}. "
         f"Undecided candidates: {len(undecided)}.\n"
-        f"Job: {json.dumps(jd, separators=(',', ':'))}\n"
+        f"Job: {json.dumps(observation.get('job_description', {}), separators=(',', ':'))}\n"
         f"Quotas: {json.dumps(observation.get('quotas', {}))}\n"
         f"Candidates: {json.dumps(observation.get('candidates_summary', []), separators=(',', ':'))}\n"
         f"Revealed data: {json.dumps(observation.get('revealed_data', {}), separators=(',', ':'))}\n"
@@ -180,11 +148,6 @@ def build_user_prompt(step: int, observation: dict, history: list[str]) -> str:
         f"Previous steps:\n{history_block}\n\n"
         f"What is your next action? Respond with JSON only."
     )
-
-
-# ---------------------------------------------------------------------------
-# LLM action extraction
-# ---------------------------------------------------------------------------
 
 
 def parse_action(text: str) -> dict | None:
@@ -205,41 +168,157 @@ def parse_action(text: str) -> dict | None:
     return None
 
 
-def fallback_action(observation: dict) -> dict:
-    """Hold the first undecided candidate."""
-    decided = set(observation.get("decisions_made", {}))
-    for c in observation.get("candidates_summary", []):
-        if c["id"] not in decided:
-            return {"type": "make_decision", "candidate_id": c["id"], "decision": "hold"}
-    first = observation["candidates_summary"][0]["id"]
-    return {"type": "check_platform", "candidate_id": first, "platform": "github"}
+# ---------------------------------------------------------------------------
+# Model chooser
+# ---------------------------------------------------------------------------
 
 
-def make_llm_chooser(client: Any, model: str) -> ChooseAction:
-    """Build an action chooser backed by an OpenAI-compatible chat client."""
-    def choose(observation: dict, history: list[str]) -> dict:
+@dataclass
+class Usage:
+    calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    api_errors: int = 0
+    parse_failures: int = 0
+    length_cutoffs: int = 0
+    rejections: int = 0
+    seconds: float = 0.0
+
+    def as_dict(self) -> dict[str, Any]:
+        return dict(self.__dict__)
+
+
+# A chooser maps (observation, history, usage) to one action dict, or raises
+# IncompleteEpisode.
+ChooseAction = Callable[[dict, list[str], Usage], dict]
+
+
+@dataclass
+class ModelChooser:
+    """Asks an OpenAI-compatible chat model for one action per step."""
+
+    client: Any
+    model: str
+    max_tokens: int = MAX_TOKENS
+    max_tokens_ceiling: int = MAX_TOKENS_CEILING
+    attempts: int = MODEL_ATTEMPTS
+    temperature: float = TEMPERATURE
+    backoff_s: float = 2.0
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    def __call__(self, observation: dict, history: list[str], usage: Usage) -> dict:
+        cap = self.max_tokens
+        notes: list[str] = []
         step = observation.get("step_number", 0) + 1
-        try:
-            completion = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": build_user_prompt(step, observation, history)},
-                ],
-                temperature=TEMPERATURE,
-                max_tokens=MAX_TOKENS,
-                stream=False,
-            )
-            text = completion.choices[0].message.content or ""
+        last_problem = "no attempt"
+        for attempt in range(self.attempts):
+            try:
+                completion = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": build_user_prompt(step, observation, history + notes)},
+                    ],
+                    temperature=self.temperature,
+                    max_tokens=cap,
+                    **self.extra,
+                )
+            except Exception as exc:  # network or provider error: back off and retry
+                usage.api_errors += 1
+                last_problem = f"model request failed: {exc}"[:300]
+                time.sleep(self.backoff_s * (2 ** attempt))
+                continue
+            usage.calls += 1
+            u = getattr(completion, "usage", None)
+            if u is not None:
+                usage.prompt_tokens += getattr(u, "prompt_tokens", 0) or 0
+                usage.completion_tokens += getattr(u, "completion_tokens", 0) or 0
+            choice = completion.choices[0]
+            text = choice.message.content or ""
             action = parse_action(text)
             if action is not None:
                 return action
-            print(f"[DEBUG] Unparseable model output: {text[:200]!r}", flush=True)
-        except Exception as exc:  # network or provider errors: fall back, keep playing
-            print(f"[DEBUG] Model request failed: {exc}", flush=True)
-        return fallback_action(observation)
+            if getattr(choice, "finish_reason", None) == "length":
+                usage.length_cutoffs += 1
+                last_problem = f"reply cut off at max_tokens={cap}"
+                cap = min(cap * 2, self.max_tokens_ceiling)
+            else:
+                usage.parse_failures += 1
+                last_problem = f"unparseable reply: {text[:200]!r}"
+                notes = ["Your last reply was not a single JSON action. Reply with exactly one JSON object."]
+        raise IncompleteEpisode(last_problem)
 
-    return choose
+
+# ---------------------------------------------------------------------------
+# Environments: in process (default) or a server over its websocket
+# ---------------------------------------------------------------------------
+
+
+class LocalDriver:
+    """The core environment in process, optionally logged."""
+
+    def __init__(self, log_path: Path | None = None, *, agent: str = "inference", model: str | None = None):
+        core = RecruitmentEnvironment()
+        self.env = LoggedEnvironment(core, log_path, agent=agent, model=model) if log_path else core
+
+    def reset(self, task: str, seed: int, name_seed: int = 0, name_blind: bool = False) -> dict:
+        return self.env.reset(task, seed, name_seed=name_seed, name_blind=name_blind).model_dump(mode="json")
+
+    def step(self, action: dict) -> tuple[dict | None, float, bool, str | None]:
+        """Return (observation, reward, done, None), or (None, 0, False, error) if rejected."""
+        try:
+            parsed = _ACTION.validate_python(action)
+        except Exception as exc:
+            return None, 0.0, False, f"invalid action: {exc}"[:300]
+        try:
+            obs, reward, done, _ = self.env.step(parsed)
+        except (ValueError, RuntimeError) as exc:
+            return None, 0.0, False, str(exc)[:300]
+        return obs.model_dump(mode="json"), reward.step_reward, done, None
+
+    def grade(self) -> dict:
+        return self.env.grade_report()
+
+    def close(self) -> None:
+        if isinstance(self.env, LoggedEnvironment):
+            self.env.close()
+
+
+class RemoteDriver:
+    """A RecruitEnv server over its OpenEnv websocket (needs the openenv extra)."""
+
+    def __init__(self, url: str):
+        from recruitenv.client import RecruitAction, RecruitEnvClient
+
+        self._action_cls = RecruitAction
+        self._client = RecruitEnvClient(base_url=url).sync()
+        self._client.__enter__()
+        self._grade: dict | None = None
+
+    def reset(self, task: str, seed: int, name_seed: int = 0, name_blind: bool = False) -> dict:
+        r = self._client.reset(task=task, seed=seed, name_seed=name_seed, name_blind=name_blind)
+        return r.observation.model_dump(mode="json")
+
+    def step(self, action: dict) -> tuple[dict | None, float, bool, str | None]:
+        try:
+            act = self._action_cls(**action)
+        except Exception as exc:
+            return None, 0.0, False, f"invalid action: {exc}"[:300]
+        r = self._client.step(act)
+        obs = r.observation.model_dump(mode="json")
+        if obs.get("error"):
+            return None, 0.0, False, obs["error"]
+        if r.done:
+            self._grade = obs.get("metadata", {}).get("grade")
+        return obs, float(r.reward or 0.0), bool(r.done), None
+
+    def grade(self) -> dict:
+        if self._grade is None:
+            raise RuntimeError("episode not finished")
+        return self._grade
+
+    def close(self) -> None:
+        self._client.__exit__(None, None, None)
 
 
 # ---------------------------------------------------------------------------
@@ -247,65 +326,93 @@ def make_llm_chooser(client: Any, model: str) -> ChooseAction:
 # ---------------------------------------------------------------------------
 
 
-async def run_episode(
-    env: EnvHTTPClient, choose: ChooseAction, task: str, seed: int,
-) -> dict[str, Any]:
-    """Play one episode and return the grader's result plus step rewards."""
-    observation = await env.reset(task_id=task, seed=seed)
+def run_episode(driver: Any, choose: ChooseAction, task: str, seed: int, *,
+                name_seed: int = 0, name_blind: bool = False, verbose: bool = True) -> dict[str, Any]:
+    """Play one episode. Returns the grader's result, or ``incomplete=True``.
+
+    A rejected action costs no step; the rejection is shown to the agent in
+    its history. More rejections than twice the budget ends the episode as
+    incomplete.
+    """
+    usage = Usage()
+    t0 = time.time()
+    observation = driver.reset(task, seed, name_seed=name_seed, name_blind=name_blind)
     history: list[str] = []
     rewards: list[float] = []
-    # Rejected actions do not consume budget; cap them so a confused model
-    # cannot loop forever.
     rejections_left = 2 * observation["steps_remaining"]
-
-    while not observation.get("done", False):
-        action = choose(observation, history)
-        result, error = await env.step(action)
-        if error is not None:
-            rejections_left -= 1
-            history.append(f"{json.dumps(action)} -> rejected: {error}")
-            if rejections_left <= 0:
-                action = fallback_action(observation)
-                result, error = await env.step(action)
-                if error is not None:
-                    raise RuntimeError(f"fallback action rejected: {error}")
-            else:
-                print(f"[DEBUG] action rejected: {error}", flush=True)
+    done = False
+    result: dict[str, Any] = {"task": task, "seed": seed, "name_seed": name_seed, "name_blind": name_blind}
+    try:
+        while not done:
+            action = choose(observation, history, usage)
+            obs, reward, done, error = driver.step(action)
+            if error is not None:
+                usage.rejections += 1
+                rejections_left -= 1
+                history.append(f"{json.dumps(action)} -> rejected: {error}")
+                if verbose:
+                    log_step(observation["step_number"], json.dumps(action), 0.0, False, error)
+                if rejections_left <= 0:
+                    raise IncompleteEpisode("too many rejected actions")
                 continue
-
-        observation = result["observation"]
-        reward = float(result["reward"]["step_reward"])
-        done = bool(result["done"])
-        rewards.append(reward)
-        log_step(step=observation["step_number"], action=json.dumps(action), reward=reward, done=done, error=None)
-        history.append(f"Step {observation['step_number']}: {json.dumps(action)}")
-
-    grade = await env.grade()
+            observation = obs
+            rewards.append(reward)
+            history.append(f"Step {observation['step_number']}: {json.dumps(action)}")
+            if verbose:
+                log_step(observation["step_number"], json.dumps(action), reward, done, None)
+    except IncompleteEpisode as exc:
+        usage.seconds = round(time.time() - t0, 1)
+        return {**result, "incomplete": True, "reason": str(exc), "steps": observation.get("step_number", 0),
+                "usage": usage.as_dict()}
+    grade = driver.grade()
+    usage.seconds = round(time.time() - t0, 1)
     return {
+        **result,
+        "incomplete": False,
         "score": grade["score"],
-        "success": bool(grade["breakdown"].get("success", False)),
-        "steps": observation["step_number"],
+        "success": bool(grade["success"]),
+        "steps": grade["steps_used"],
         "rewards": rewards,
         "grade": grade,
+        "usage": usage.as_dict(),
     }
 
 
-async def main() -> None:
+def make_client(base_url: str | None = None, api_key: str | None = None):
     from openai import OpenAI
 
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
-    env = EnvHTTPClient(base_url=ENV_URL)
-    result: dict[str, Any] = {"score": 0.0, "success": False, "steps": 0, "rewards": []}
+    return OpenAI(base_url=base_url or API_BASE_URL, api_key=api_key or API_KEY)
 
-    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Play RecruitEnv episodes with a chat model.")
+    ap.add_argument("--task", default=os.getenv("TASK", "easy"), choices=["easy", "medium", "hard"])
+    ap.add_argument("--seed", type=int, default=int(os.getenv("SEED", "42")))
+    ap.add_argument("--name-seed", type=int, default=0)
+    ap.add_argument("--name-blind", action="store_true")
+    ap.add_argument("--model", default=MODEL_NAME)
+    ap.add_argument("--max-tokens", type=int, default=MAX_TOKENS)
+    ap.add_argument("--url", default=os.getenv("ENV_URL"), help="play against a server instead of in process")
+    ap.add_argument("--log-dir", default="outputs/inference", help="where episode logs go (local runs)")
+    ap.add_argument("--no-log", action="store_true")
+    args = ap.parse_args(argv)
+
+    chooser = ModelChooser(make_client(), args.model, max_tokens=args.max_tokens)
+    if args.url:
+        driver: Any = RemoteDriver(args.url)
+    else:
+        log = None if args.no_log else Path(args.log_dir) / (
+            f"{args.model}-{args.task}-s{args.seed}-n{args.name_seed}{'-blind' if args.name_blind else ''}.jsonl")
+        driver = LocalDriver(log, agent="inference", model=args.model)
+    log_start(task=args.task, env=BENCHMARK, model=args.model)
     try:
-        result = await run_episode(env, make_llm_chooser(client, MODEL_NAME), TASK_NAME, SEED)
-    except Exception as exc:
-        print(f"[DEBUG] Unhandled exception: {exc}", flush=True)
+        result = run_episode(driver, chooser, args.task, args.seed,
+                             name_seed=args.name_seed, name_blind=args.name_blind)
     finally:
-        await env.close()
-        log_end(success=result["success"], steps=result["steps"], score=result["score"], rewards=result["rewards"])
+        driver.close()
+    log_end(result)
+    return 0 if not result["incomplete"] else 2
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    sys.exit(main())

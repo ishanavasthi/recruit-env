@@ -1,42 +1,35 @@
-"""End-to-end test of inference.py's episode loop against the real API app.
-
-A scripted chooser stands in for the LLM, so no API key is needed.
-"""
+"""inference.py and the decide-only baseline: episode loop, no silent fallback,
+retries, logging, and the websocket driver. A fake model stands in for the API."""
 
 from __future__ import annotations
 
-import asyncio
 import json
+from types import SimpleNamespace
 
-import httpx
 import pytest
 
 import inference
-from api.main import app
+from baseline import run_baseline
 from recruitenv import rubric
 from recruitenv.models import JobDescription
 from recruitenv.profile_factory import fill_quotas
+from recruitenv.trajectory import read_log, replay
 
 
-def _scripted_chooser():
-    """Reveal every rubric source, then decide by the published rubric.
-
-    Sends one invalid action first to exercise the rejection path.
-    """
-    sent_invalid = False
+def rubric_chooser(send_invalid_first: bool = True):
+    """Reveal every rubric source, then decide by the published rubric."""
+    sent = not send_invalid_first
     actions = {
-        "github": ("check_platform", "platform"),
-        "leetcode": ("check_platform", "platform"),
-        "kaggle": ("check_platform", "platform"),
-        "experience": ("read_resume_section", "section"),
+        "github": ("check_platform", "platform"), "leetcode": ("check_platform", "platform"),
+        "kaggle": ("check_platform", "platform"), "experience": ("read_resume_section", "section"),
         "skills": ("read_resume_section", "section"),
     }
 
-    def choose(observation: dict, history: list[str]) -> dict:
-        nonlocal sent_invalid
-        if not sent_invalid:
-            sent_invalid = True
-            return {"type": "score_dimension", "candidate_id": "x", "dimension": "technical", "score": 1}
+    def choose(observation, history, usage):
+        nonlocal sent
+        if not sent:
+            sent = True
+            return {"type": "score_dimension", "candidate_id": "x"}
         revealed = observation["revealed_data"]
         for c in observation["candidates_summary"]:
             have = revealed.get(c["id"], {})
@@ -46,8 +39,7 @@ def _scripted_chooser():
                     return {"type": kind, "candidate_id": c["id"], key: src}
         jd = JobDescription(**observation["job_description"])
         est = {c["id"]: rubric.estimate(revealed.get(c["id"]), jd).total for c in observation["candidates_summary"]}
-        labels = fill_quotas(est, observation["quotas"])
-        for cid, label in labels.items():
+        for cid, label in fill_quotas(est, observation["quotas"]).items():
             if cid not in observation["decisions_made"]:
                 return {"type": "make_decision", "candidate_id": cid, "decision": label}
         raise AssertionError("episode should have ended")
@@ -56,25 +48,109 @@ def _scripted_chooser():
 
 
 @pytest.mark.parametrize("task", ["easy", "medium"])
-def test_inference_reports_the_grader_score(task: str) -> None:
-    """The reported score is /grader's. Medium's budget fits a full read."""
-    async def run() -> dict:
-        env = inference.EnvHTTPClient("http://test", transport=httpx.ASGITransport(app=app))
-        try:
-            return await inference.run_episode(env, _scripted_chooser(), task, seed=42)
-        finally:
-            await env.close()
-
-    result = asyncio.run(run())
-    assert result["score"] == result["grade"]["score"]
-    assert sum(result["rewards"]) == pytest.approx(result["score"])
-    assert result["rewards"][-1] == result["score"]
-    if task == "medium":
-        assert result["score"] >= 0.99
-        assert result["success"] is True
+def test_local_episode_reports_grader_score_and_logs(task, tmp_path):
+    log = tmp_path / "ep.jsonl"
+    driver = inference.LocalDriver(log, model="fake")
+    result = inference.run_episode(driver, rubric_chooser(), task, seed=42, verbose=False)
+    driver.close()
+    assert result["incomplete"] is False
+    assert result["score"] == result["grade"]["score"] == result["rewards"][-1]
+    assert result["usage"]["rejections"] == 1
+    assert result["score"] >= 0.99 and result["success"] is True
+    assert read_log(log)[-1]["grade"]["score"] == result["score"]
+    replay(log)
 
 
-def test_build_user_prompt_contains_revealed_values() -> None:
+def test_remote_driver_over_websocket():
+    pytest.importorskip("openenv")
+    import threading
+
+    import uvicorn
+
+    from server.app import app
+
+    config = uvicorn.Config(app, host="127.0.0.1", port=7893, log_level="warning")
+    server = uvicorn.Server(config)
+    th = threading.Thread(target=server.run, daemon=True)
+    th.start()
+    import time
+    for _ in range(100):
+        if server.started:
+            break
+        time.sleep(0.05)
+    try:
+        driver = inference.RemoteDriver("http://127.0.0.1:7893")
+        result = inference.run_episode(driver, rubric_chooser(), "medium", seed=42, verbose=False)
+        driver.close()
+    finally:
+        server.should_exit = True
+        th.join(timeout=5)
+    local = inference.run_episode(inference.LocalDriver(), rubric_chooser(), "medium", seed=42, verbose=False)
+    assert result["incomplete"] is False
+    assert result["score"] == local["score"]
+    assert result["grade"]["checks"] == json.loads(json.dumps(local["grade"]["checks"]))
+
+
+class FakeLLM:
+    """OpenAI-shaped client. ``script`` items: an action dict, "error", "cutoff" or "junk"."""
+
+    def __init__(self, script):
+        self.script = list(script)
+        self.calls = []
+        self.chat = self
+        self.completions = self
+
+    def create(self, **kw):
+        self.calls.append(kw)
+        item = self.script.pop(0) if self.script else "junk"
+        if item == "error":
+            raise RuntimeError("provider down")
+        if item == "cutoff":
+            text, reason = "", "length"
+        elif item == "junk":
+            text, reason = "I think candidate 3 looks strong", "stop"
+        else:
+            text, reason = json.dumps(item), "stop"
+        msg = SimpleNamespace(content=text)
+        return SimpleNamespace(choices=[SimpleNamespace(message=msg, finish_reason=reason)],
+                               usage=SimpleNamespace(prompt_tokens=100, completion_tokens=10))
+
+
+def _first_action(task="easy", seed=1):
+    d = inference.LocalDriver()
+    obs = d.reset(task, seed)
+    return {"type": "check_platform", "candidate_id": obs["candidates_summary"][0]["id"], "platform": "github"}
+
+
+def test_errors_and_cutoffs_are_retried_with_a_growing_cap():
+    action = _first_action()
+    llm = FakeLLM(["error", "cutoff", "junk", action])
+    chooser = inference.ModelChooser(llm, "m", max_tokens=1000, backoff_s=0)
+    usage = inference.Usage()
+    d = inference.LocalDriver()
+    obs = d.reset("easy", 1)
+    assert chooser(obs, [], usage) == action
+    assert (usage.api_errors, usage.length_cutoffs, usage.parse_failures, usage.calls) == (1, 1, 1, 3)
+    assert [c["max_tokens"] for c in llm.calls] == [1000, 1000, 2000, 2000]
+
+
+def test_no_fallback_episode_is_incomplete():
+    llm = FakeLLM(["cutoff"] * 10)
+    chooser = inference.ModelChooser(llm, "m", max_tokens=1000, max_tokens_ceiling=4000, backoff_s=0)
+    result = inference.run_episode(inference.LocalDriver(), chooser, "easy", 1, verbose=False)
+    assert result["incomplete"] is True and "cut off" in result["reason"]
+    assert "score" not in result
+    assert [c["max_tokens"] for c in llm.calls] == [1000, 2000, 4000, 4000]
+
+
+def test_endless_rejections_end_incomplete():
+    def bad(observation, history, usage):
+        return {"type": "make_decision", "candidate_id": "nobody", "decision": "hold"}
+    result = inference.run_episode(inference.LocalDriver(), bad, "easy", 1, verbose=False)
+    assert result["incomplete"] is True and "rejected" in result["reason"]
+
+
+def test_build_user_prompt_contains_revealed_values():
     observation = {
         "steps_remaining": 10,
         "job_description": {"role": "ML Engineer"},
@@ -83,46 +159,38 @@ def test_build_user_prompt_contains_revealed_values() -> None:
         "decisions_made": {},
     }
     prompt = inference.build_user_prompt(1, observation, [])
-    assert '"stars_received":321' in prompt
-    assert "ML Engineer" in prompt
+    assert '"stars_received":321' in prompt and "ML Engineer" in prompt
 
 
-def test_parse_action() -> None:
+def test_parse_action():
     assert inference.parse_action('```json\n{"type": "make_decision"}\n```') == {"type": "make_decision"}
-    assert inference.parse_action("I pick {\"a\": 1} now") == {"a": 1}
+    assert inference.parse_action('I pick {"a": 1} now') == {"a": 1}
     assert inference.parse_action("nothing") is None
 
 
-class _FakeLLM:
-    """Stands in for an OpenAI client; answers with the rubric's decisions or fails."""
+# -- decide-only baseline ---------------------------------------------------
 
-    def __init__(self, answer):
-        self._answer = answer
-        self.chat = self
-        self.completions = self
 
-    def create(self, **kwargs):
-        if self._answer is None:
-            raise RuntimeError("provider down")
-        msg = type("M", (), {"content": json.dumps(self._answer)})
-        return type("C", (), {"choices": [type("Ch", (), {"message": msg})]})
+def _rubric_answer(task, seed):
+    from recruitenv.environment import RecruitmentEnvironment
+
+    env = RecruitmentEnvironment()
+    obs = env.reset(task, seed).model_dump(mode="json")
+    return run_baseline.rubric_decisions(run_baseline.gather(env, obs))
 
 
 @pytest.mark.parametrize("task", ["easy", "medium", "hard"])
-@pytest.mark.parametrize("llm_works", [True, False])
-def test_baseline_run_task(task: str, llm_works: bool, monkeypatch) -> None:
-    from fastapi.testclient import TestClient
-
-    from baseline import run_baseline
-
-    monkeypatch.setattr(run_baseline, "BASE_URL", "http://testserver")
-    http = TestClient(app)
-    answer = None
-    if llm_works:
-        obs = http.post("/reset", json={"task_id": task, "seed": run_baseline.SEED}).json()
-        answer = run_baseline.rubric_decisions(run_baseline.gather(http, obs))
-    result = run_baseline.run_task(_FakeLLM(answer), http, task)
-    assert result["decided_by"] == ("model" if llm_works else "rubric fallback")
-    assert result["score"] == result["breakdown"]["grader_score"]
+def test_decide_only_baseline(task, tmp_path):
+    llm = FakeLLM(["cutoff", _rubric_answer(task, 42)])
+    log = tmp_path / f"{task}.jsonl"
+    r = run_baseline.run_task(llm, "m", task, 42, log_path=log, backoff_s=0)
+    assert r["incomplete"] is False and r["usage"]["length_cutoffs"] == 1
+    assert r["score"] == r["grade"]["score"]
     if task in ("easy", "medium"):
-        assert result["score"] >= 0.99
+        assert r["score"] >= 0.99
+    replay(log)
+
+
+def test_decide_only_has_no_fallback():
+    r = run_baseline.run_task(FakeLLM(["junk"] * 10), "m", "medium", 42, backoff_s=0)
+    assert r["incomplete"] is True and "unusable" in r["reason"]

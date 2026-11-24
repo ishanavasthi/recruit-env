@@ -1,11 +1,13 @@
-name: RecruitEnv
-version: "3.0.0"
+spec_version: 1
+name: recruitenv
+version: "4.0.0"
 description: >
   RL environment for candidate pipeline triage. An agent reveals evidence
   under a step budget and decides each candidate against a job description,
   scored by a published rubric, with a counterfactual fairness audit.
-
-entry_point: api.main:app
+type: space
+runtime: fastapi
+app: server.app:app
 port: 7860
 space_url: "https://huggingface.co/spaces/heyavasthi/recruitenv"
 
@@ -16,3 +18,21 @@ tasks:
     description: Conflicted Signals (8 candidates, shortlist 3, two conflicted, 50 steps)
   - id: hard
     description: Batch Triage (20 candidates, shortlist 5, 50 steps; must prioritise)
+
+validation:
+  reward:
+    range: [0.0, 1.0]
+    oracle_tolerance: 0.01      # the oracle scores 0.999 (scores are clamped to [0.001, 0.999])
+    floor_margin: 0.1
+  resources:
+    cpu: 1.0
+    memory_mb: 1024
+    disk_mb: 512
+    episode_timeout_s: 300.0
+  capabilities:
+    verifier:
+      kind: reward_channel      # the terminal reward is the grader's score
+    task_api: true
+    declared_task_count: {test: 3}
+  types:
+    tags: [triage, hiring, fairness]
