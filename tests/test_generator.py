@@ -144,7 +144,17 @@ def _pool_hash(task: str, seed: int) -> str:
     return hashlib.sha256(blob.encode()).hexdigest()[:16]
 
 
-PINNED: dict[tuple[str, int], str] = {}
+PINNED: dict[tuple[str, int], str] = {
+    ("easy", 0): "a9d5a4912e3900c1",
+    ("easy", 1): "2133d700c372ad11",
+    ("easy", 2): "e39b4dc2ed7276c8",
+    ("medium", 0): "01b68061342592ed",
+    ("medium", 1): "06438fc42cc120f4",
+    ("medium", 2): "6764bd42cbc95dcb",
+    ("hard", 0): "9071670a12fdd760",
+    ("hard", 1): "7761a22e7794527c",
+    ("hard", 2): "8b42bf7460fc34f7",
+}
 
 
 @pytest.mark.parametrize("task", TASKS)
@@ -163,7 +173,7 @@ def test_priors_match_generator_means() -> None:
         for c in ep.candidates:
             bd = rubric.score(c, ep.jd).per_source
             d = acc[ep.jd.role_type]
-            for k in ("github", "leetcode", "kaggle", "growth"):
+            for k in ("github", "leetcode", "kaggle", "github_activity", "leetcode_practice"):
                 d[k].append(bd[k])
             d["skill_match"].append(bd["skills"])
     for role, d in acc.items():

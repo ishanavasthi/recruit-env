@@ -1,7 +1,8 @@
 """Easy task — 'Screening Sprint'.
 
-Screen 10 candidates and shortlist the top 3. The budget (40 steps) covers
-about three of the five rubric sources per candidate plus every decision.
+Screen 10 candidates and shortlist the top 3. The budget (62 steps) covers
+reading all five rubric sources for everyone, every decision and 2 spare
+steps: easy tests applying the rubric to full evidence.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ EASY_CONFIG = TaskConfig(
     name="Screening Sprint",
     description="Screen 10 candidates and shortlist the top 3.",
     difficulty="easy",
-    max_steps=40,
+    max_steps=62,
     candidate_count=10,
     label_distribution={"shortlist": 3, "hold": 4, "reject": 3},
     success_threshold=0.75,

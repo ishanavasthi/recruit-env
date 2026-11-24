@@ -41,7 +41,7 @@ class TestReset:
         obs = env.reset("easy", seed=42)
         assert obs.task_id == "easy"
         assert obs.step_number == 0
-        assert obs.steps_remaining == 40
+        assert obs.steps_remaining == 62
         assert len(obs.candidates_summary) == 10
         assert obs.revealed_data == {}
         assert obs.decisions_made == {}
@@ -145,7 +145,7 @@ class TestTermination:
         cids = [c["id"] for c in obs.candidates_summary]
 
         done = False
-        for i in range(40):
+        for i in range(obs.steps_remaining):
             cid = cids[i % len(cids)]
             obs, _, done, info = env.step(
                 ReadResumeSectionAction(candidate_id=cid, section="education")

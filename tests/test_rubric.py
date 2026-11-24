@@ -96,13 +96,16 @@ def test_empty_record_gives_prior_estimate(role: str) -> None:
 
 
 def test_jd_changes_ranking() -> None:
-    kaggler = _profile(kaggle_pct=99.0, kaggle_rank="Grandmaster", medals={"gold": 5}, stars=120, rating=1550)
-    builder = _profile(kaggle_pct=5.0, kaggle_rank="Novice", stars=400, rating=1600, repos=25)
-    for p in (kaggler, builder):
-        p.resume_sections["skills"].skills = []
+    """The same two candidates swap order between an ML and a frontend job."""
     ml, fe = _jd("ml_engineer"), _jd("frontend_dev")
-    assert rubric.score(kaggler, ml).technical > rubric.score(builder, ml).technical
-    assert rubric.score(kaggler, fe).technical < rubric.score(builder, fe).technical
+    ml_person = _profile(skills=ml.required_skills, kaggle_pct=80.0, kaggle_rank="Expert")
+    fe_person = _profile(skills=fe.required_skills, kaggle_pct=40.0)
+    assert rubric.score(ml_person, ml).total > rubric.score(fe_person, ml).total
+    assert rubric.score(ml_person, fe).total < rubric.score(fe_person, fe).total
+
+
+def test_kaggle_weighs_more_for_ml_than_frontend() -> None:
+    assert rubric.TECH_WEIGHTS["ml_engineer"]["kaggle"] > rubric.TECH_WEIGHTS["frontend_dev"]["kaggle"]
 
 
 def test_experience_capped_by_activity() -> None:

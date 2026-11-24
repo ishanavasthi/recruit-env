@@ -54,11 +54,11 @@ LABELS: tuple[str, ...] = ("shortlist", "hold", "reject")
 # ---------------------------------------------------------------------------
 
 NOISE = 0.6            # per-field noise around the latent ability (sd units)
-RHO_TECH = 0.25        # correlation between the three platform abilities
+RHO_TECH = 0.0         # correlation between the three platform abilities
 MARGIN = 0.004         # minimum rubric gap between adjacent label bands
 CONFLICT_GAP = 0.86    # rank-percentile disagreement that makes a conflict
 CONFLICT_RATE = 0.25   # chance a candidate gets an injected conflicting source
-SKILL_COVERAGE = (2.0, 2.0)  # Beta(a, b) share of the JD's skills a candidate lists
+SKILL_COVERAGE = (5.0, 5.0)  # Beta(a, b) share of the JD's skills a candidate lists
 MAX_ATTEMPTS = 500
 
 TWIN_LABEL_WEIGHTS: dict[str, float] = {"shortlist": 0.50, "hold": 0.35, "reject": 0.15}
@@ -195,9 +195,17 @@ def single_source_estimates(
 
 
 def _percentiles(values: dict[str, float]) -> dict[str, float]:
-    order = sorted(values, key=lambda c: (values[c], c))
-    n = len(order)
-    return {c: (i / (n - 1) if n > 1 else 0.5) for i, c in enumerate(order)}
+    """Rank percentile in [0, 1]; equal values share their average rank (id-independent)."""
+    n = len(values)
+    if n < 2:
+        return {c: 0.5 for c in values}
+    ordered = sorted(values.values())
+    out = {}
+    for c, v in values.items():
+        lo = ordered.index(v)
+        hi = n - 1 - ordered[::-1].index(v)
+        out[c] = ((lo + hi) / 2) / (n - 1)
+    return out
 
 
 def conflicted_candidates(
@@ -423,8 +431,9 @@ def _draw_record(rng: Generator, jd: JobDescription) -> dict[str, Any]:
     # leetcode
     a = noisy(z_alg)
     hard = int(max(0, round(math.exp(2.2 + 0.7 * noisy(z_alg)))))
-    medium = int(max(0, round(math.exp(3.8 + 0.5 * a))))
-    easy = int(max(0, round(math.exp(3.6 + 0.4 * a))))
+    g = noisy(z_growth)  # practice volume tracks diligence, not only skill
+    medium = int(max(0, round(math.exp(3.8 + 0.6 * g))))
+    easy = int(max(0, round(math.exp(3.6 + 0.5 * g))))
     leetcode = {
         "problems_solved": easy + medium + hard,
         "easy": easy,

@@ -35,10 +35,15 @@ Policy = Callable[[RecruitmentEnvironment], list[float]]
 
 TRAIN_SEEDS = range(1000, 1200)
 
-# Source order for deep reads, most informative first (per role). Measured by
-# scripts/difficulty_sweep.py; the first entry is the screening source.
+# Source order for screening and deep reads, most informative first per role:
+# sources ranked by the hard-task score of judging on that source alone
+# (measured by scripts/difficulty_sweep.py). The first entry is the
+# screening source.
 SOURCE_PRIORITY: dict[str, tuple[str, ...]] = {
-    role: ("github", "skills", "leetcode", "experience", "kaggle") for role in ROLES
+    "ml_engineer": ("leetcode", "kaggle", "github", "skills", "experience"),
+    "frontend_dev": ("github", "leetcode", "skills", "experience", "kaggle"),
+    "backend_dev": ("leetcode", "github", "experience", "skills", "kaggle"),
+    "data_scientist": ("leetcode", "skills", "kaggle", "github", "experience"),
 }
 
 

@@ -53,7 +53,8 @@ def measure_priors(n: int = 400) -> dict[str, dict[str, float]]:
             acc[ep.jd.role_type]["github"].append(rubric.github_subscore(rec["platforms"]["github"]))
             acc[ep.jd.role_type]["leetcode"].append(rubric.leetcode_subscore(rec["platforms"]["leetcode"]))
             acc[ep.jd.role_type]["kaggle"].append(rubric.kaggle_subscore(rec["platforms"]["kaggle"]))
-            acc[ep.jd.role_type]["growth"].append(rubric.growth_subscore(rec["platforms"]["github"]))
+            acc[ep.jd.role_type]["github_activity"].append(rubric.github_activity(rec["platforms"]["github"]))
+            acc[ep.jd.role_type]["leetcode_practice"].append(rubric.leetcode_practice(rec["platforms"]["leetcode"]))
             acc[ep.jd.role_type]["claimed_years"].append(rec["resume_sections"]["experience"]["years_experience"])
             acc[ep.jd.role_type]["skill_match"].append(
                 rubric.skill_match(rec["resume_sections"]["skills"]["skills"], ep.jd))
@@ -101,14 +102,32 @@ def apply(cfg: dict) -> None:
     rubric.SKILL_FLOOR = cfg.get("skill_floor", rubric.SKILL_FLOOR)
     if "hard_budget" in cfg:
         tasks.TASK_REGISTRY["hard"] = dataclasses.replace(tasks.TASK_REGISTRY["hard"], max_steps=cfg["hard_budget"])
+    if "easy_budget" in cfg:
+        tasks.TASK_REGISTRY["easy"] = dataclasses.replace(tasks.TASK_REGISTRY["easy"], max_steps=cfg["easy_budget"])
     pf._signal_pool.cache_clear()
     policies.fit_single_source.cache_clear()
     rubric.PRIORS.update(measure_priors(200))
+    policies.SOURCE_PRIORITY.update(measure_source_priority())
+
+
+def measure_source_priority(per_role: int = 40) -> dict[str, tuple[str, ...]]:
+    """Per role, sources ordered by the hard-task score of judging on that source alone."""
+    out = {}
+    for r in pf.ROLES:
+        seeds = [s for s in range(2000, 2000 + 4 * per_role) if role(s) == r]
+        means = {src: st.mean(play("hard", s, f"single_{src}") for s in seeds) for src in rubric.SOURCES}
+        out[r] = tuple(sorted(means, key=lambda k: -means[k]))
+    return out
 
 
 def evaluate(cfg: dict, n: int) -> dict:
     apply(cfg)
-    out: dict = {"cfg": cfg}
+    return measure(n, cfg)
+
+
+def measure(n: int, cfg: dict | None = None) -> dict:
+    """Criteria for the current constants over evaluation seeds 0..n-1."""
+    out: dict = {"cfg": cfg or {}, "source_priority": dict(policies.SOURCE_PRIORITY)}
     thr = {t: tasks.TASK_REGISTRY[t].success_threshold for t in ("easy", "medium", "hard")}
 
     easy_h = scores("easy", range(n), "rubric_heuristic")
@@ -147,7 +166,7 @@ def evaluate(cfg: dict, n: int) -> dict:
         "C3": out["C3_medium_full_minus_best_single"] >= 0.2,
         "C4": (d >= 0.05 and lo > 0 and 0.5 <= out["C4_hard_prioritising_mean"] <= 0.85
                and out["C4_hard_random_pass"] < 0.05),
-        "C17": out["C17_easy_heuristic_pass"] >= 0.90,
+        "C17": out["C17_easy_heuristic_pass"] >= 0.90,  # within the easy budget
     }
     return out
 
@@ -172,11 +191,11 @@ def main() -> None:
             print(f'    "{r}": {d},')
         return
     if args.current:
-        show(evaluate({}, args.seeds))
+        show(measure(args.seeds))
         return
-    grid = itertools.product([0.55, 0.65, 0.75], [(3.0, 3.0), (4.0, 4.0)], [50])
-    for floor, cov, budget in grid:
-        show(evaluate({"skill_floor": floor, "coverage": cov, "hard_budget": budget}, args.seeds))
+    grid = itertools.product([0.65, 0.75], [(3.0, 3.0), (5.0, 5.0)], [0.0])
+    for floor, cov, rho in grid:
+        show(evaluate({"skill_floor": floor, "coverage": cov, "rho": rho}, args.seeds))
 
 
 if __name__ == "__main__":

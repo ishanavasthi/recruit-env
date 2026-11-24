@@ -6,6 +6,7 @@ A scripted chooser stands in for the LLM, so no API key is needed.
 from __future__ import annotations
 
 import asyncio
+import json
 
 import httpx
 import pytest
@@ -90,3 +91,38 @@ def test_parse_action() -> None:
     assert inference.parse_action('```json\n{"type": "make_decision"}\n```') == {"type": "make_decision"}
     assert inference.parse_action("I pick {\"a\": 1} now") == {"a": 1}
     assert inference.parse_action("nothing") is None
+
+
+class _FakeLLM:
+    """Stands in for an OpenAI client; answers with the rubric's decisions or fails."""
+
+    def __init__(self, answer):
+        self._answer = answer
+        self.chat = self
+        self.completions = self
+
+    def create(self, **kwargs):
+        if self._answer is None:
+            raise RuntimeError("provider down")
+        msg = type("M", (), {"content": json.dumps(self._answer)})
+        return type("C", (), {"choices": [type("Ch", (), {"message": msg})]})
+
+
+@pytest.mark.parametrize("task", ["easy", "medium", "hard"])
+@pytest.mark.parametrize("llm_works", [True, False])
+def test_baseline_run_task(task: str, llm_works: bool, monkeypatch) -> None:
+    from fastapi.testclient import TestClient
+
+    from baseline import run_baseline
+
+    monkeypatch.setattr(run_baseline, "BASE_URL", "http://testserver")
+    http = TestClient(app)
+    answer = None
+    if llm_works:
+        obs = http.post("/reset", json={"task_id": task, "seed": run_baseline.SEED}).json()
+        answer = run_baseline.rubric_decisions(run_baseline.gather(http, obs))
+    result = run_baseline.run_task(_FakeLLM(answer), http, task)
+    assert result["decided_by"] == ("model" if llm_works else "rubric fallback")
+    assert result["score"] == result["breakdown"]["grader_score"]
+    if task in ("easy", "medium"):
+        assert result["score"] >= 0.99

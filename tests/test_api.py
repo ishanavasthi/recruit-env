@@ -26,7 +26,7 @@ class TestHealth:
         assert r.status_code == 200
         body = r.json()
         assert body["status"] == "ok"
-        assert body["version"] == "2.0.0"
+        assert body["version"] == "3.0.0"
 
 
 # -----------------------------------------------------------------------
@@ -63,7 +63,7 @@ class TestReset:
         obs = r.json()
         assert obs["task_id"] == "easy"
         assert obs["step_number"] == 0
-        assert obs["steps_remaining"] == 40
+        assert obs["steps_remaining"] == 62
         assert len(obs["candidates_summary"]) == 10
         assert obs["done"] is False
 

@@ -15,7 +15,8 @@ source      action                                rubric inputs
 github      check_platform github                 stars, repos, streak,
                                                   contributions, years_active
 leetcode    check_platform leetcode               contest rating, hard solved,
-                                                  global percentile
+                                                  global percentile, problems
+                                                  solved
 kaggle      check_platform kaggle                 rank, best finish percentile,
                                                   medals
 experience  read_resume_section experience        claimed years
@@ -35,13 +36,15 @@ two different inputs tie):
   - ``kaggle   = 0.5*percentile/100 + 0.3*rank_value + 0.2*h(3*gold + 2*silver + bronze, 6)``
 
 - **technical** = weighted mean of the three platform sub-scores with the
-  role's ``TECH_WEIGHTS``, minus ``KAPPA`` times their weighted standard
-  deviation (claims of strength need corroboration).
-- **growth** = ``0.5*h(streak, 45) + 0.5*h(contributions, 300)`` (GitHub).
+  role's ``TECH_WEIGHTS``, minus ``KAPPA`` (1.0) times their weighted
+  standard deviation (claims of strength need corroboration).
+- **growth** = ``0.5*activity + 0.5*practice``: GitHub activity
+  ``0.5*h(streak, 45) + 0.5*h(contributions, 300)`` and LeetCode practice
+  volume ``h(problems_solved, 150)``.
 - **experience** = ``h(supported_years, jd.experience_years)``, where
   ``supported_years = min(claimed_years, years_active + SLACK_YEARS)`` once
-  GitHub has been checked (claimed years count only as far as public activity
-  supports them).
+  both the experience section and GitHub are revealed (claimed years count
+  only as far as public activity supports them).
 - **skill_match** = ``0.85 * required_share + 0.15 * nice_to_have_share``.
 - **total** = ``(w_t*technical + w_e*experience + w_g*growth) * (SKILL_FLOOR + (1 - SKILL_FLOOR)*skill_match)``
   with the job description's weights.
@@ -65,15 +68,15 @@ SOURCES: tuple[str, ...] = ("github", "leetcode", "kaggle", "experience", "skill
 PLATFORMS: tuple[str, ...] = ("github", "leetcode", "kaggle")
 RESUME_SOURCES: tuple[str, ...] = ("experience", "skills")
 
-KAPPA = 0.5
+KAPPA = 1.0
 SLACK_YEARS = 1.5
-SKILL_FLOOR = 0.4
+SKILL_FLOOR = 0.75
 
 TECH_WEIGHTS: dict[str, dict[str, float]] = {
     "ml_engineer": {"leetcode": 0.30, "github": 0.30, "kaggle": 0.40},
-    "data_scientist": {"leetcode": 0.25, "github": 0.30, "kaggle": 0.45},
-    "backend_dev": {"leetcode": 0.45, "github": 0.50, "kaggle": 0.05},
-    "frontend_dev": {"leetcode": 0.35, "github": 0.60, "kaggle": 0.05},
+    "data_scientist": {"leetcode": 0.30, "github": 0.25, "kaggle": 0.45},
+    "backend_dev": {"leetcode": 0.40, "github": 0.35, "kaggle": 0.25},
+    "frontend_dev": {"leetcode": 0.35, "github": 0.40, "kaggle": 0.25},
 }
 
 KAGGLE_RANK_VALUE: dict[str, float] = {
@@ -85,17 +88,17 @@ KAGGLE_RANK_VALUE: dict[str, float] = {
 }
 
 # Role priors for unrevealed inputs: generator means over seeds 5000-5999,
-# measured by scripts/difficulty_sweep.py --priors. Keys are rubric inputs.
+# measured by `python scripts/difficulty_sweep.py --priors`. Platform entries
+# are sub-scores; claimed_years is in years; skill_match is a share.
 PRIORS: dict[str, dict[str, float]] = {
-    role: {
-        "leetcode": 0.45,
-        "github": 0.45,
-        "kaggle": 0.35,
-        "growth": 0.5,
-        "claimed_years": 4.0,
-        "skill_match": 0.5,
-    }
-    for role in TECH_WEIGHTS
+    "backend_dev": {"github": 0.452, "leetcode": 0.479, "kaggle": 0.434, "github_activity": 0.418,
+                    "leetcode_practice": 0.401, "claimed_years": 4.239, "skill_match": 0.475},
+    "data_scientist": {"github": 0.452, "leetcode": 0.472, "kaggle": 0.43, "github_activity": 0.412,
+                       "leetcode_practice": 0.398, "claimed_years": 4.279, "skill_match": 0.482},
+    "frontend_dev": {"github": 0.449, "leetcode": 0.478, "kaggle": 0.426, "github_activity": 0.415,
+                     "leetcode_practice": 0.399, "claimed_years": 4.221, "skill_match": 0.475},
+    "ml_engineer": {"github": 0.45, "leetcode": 0.478, "kaggle": 0.438, "github_activity": 0.413,
+                    "leetcode_practice": 0.4, "claimed_years": 4.296, "skill_match": 0.474},
 }
 
 
@@ -151,8 +154,20 @@ def github_subscore(stats: dict[str, Any]) -> float:
     return 0.6 * _h(math.log1p(stats["stars_received"]), math.log1p(150)) + 0.4 * _h(stats["repos"], 15)
 
 
-def growth_subscore(stats: dict[str, Any]) -> float:
+def github_activity(stats: dict[str, Any]) -> float:
     return 0.5 * _h(stats["commit_streak_days"], 45) + 0.5 * _h(stats["contributions_last_year"], 300)
+
+
+def leetcode_practice(stats: dict[str, Any]) -> float:
+    return _h(stats["problems_solved"], 150)
+
+
+def growth_subscore(github: dict[str, Any] | None, leetcode: dict[str, Any] | None, jd: JobDescription) -> float:
+    """Half GitHub activity, half LeetCode practice volume; priors fill a missing half."""
+    prior = PRIORS[jd.role_type]
+    a = github_activity(github) if github else prior["github_activity"]
+    p = leetcode_practice(leetcode) if leetcode else prior["leetcode_practice"]
+    return 0.5 * a + 0.5 * p
 
 
 def kaggle_subscore(stats: dict[str, Any]) -> float:
@@ -203,7 +218,7 @@ def estimate(revealed: dict[str, Any] | None, jd: JobDescription) -> RubricBreak
         "leetcode": leetcode_subscore(platforms["leetcode"]) if "leetcode" in platforms else prior["leetcode"],
         "kaggle": kaggle_subscore(platforms["kaggle"]) if "kaggle" in platforms else prior["kaggle"],
     }
-    growth = growth_subscore(gh) if gh else prior["growth"]
+    growth = growth_subscore(gh, platforms.get("leetcode"), jd)
 
     w = TECH_WEIGHTS[jd.role_type]
     mean = sum(w[k] * sub[k] for k in PLATFORMS)
@@ -211,8 +226,10 @@ def estimate(revealed: dict[str, Any] | None, jd: JobDescription) -> RubricBreak
     technical = mean - KAPPA * spread
 
     exp_sec = sections.get("experience")
-    claimed = exp_sec["years_experience"] if exp_sec else prior["claimed_years"]
-    experience = experience_score(claimed, gh["years_active"] if gh else None, jd)
+    if exp_sec:
+        experience = experience_score(exp_sec["years_experience"], gh["years_active"] if gh else None, jd)
+    else:  # claimed years unknown: the prior, uncapped (GitHub alone says nothing about the claim)
+        experience = experience_score(prior["claimed_years"], None, jd)
 
     sk_sec = sections.get("skills")
     skills = skill_match(sk_sec.get("skills") or [], jd) if sk_sec else prior["skill_match"]
@@ -220,6 +237,10 @@ def estimate(revealed: dict[str, Any] | None, jd: JobDescription) -> RubricBreak
     base = jd.weight_technical * technical + jd.weight_experience * experience + jd.weight_growth * growth
     total = base * (SKILL_FLOOR + (1.0 - SKILL_FLOOR) * skills)
     per_source = {**sub, "experience": experience, "skills": skills, "growth": growth}
+    if gh:
+        per_source["github_activity"] = github_activity(gh)
+    if "leetcode" in platforms:
+        per_source["leetcode_practice"] = leetcode_practice(platforms["leetcode"])
     return RubricBreakdown(
         technical=technical,
         experience=experience,

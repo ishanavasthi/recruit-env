@@ -1,205 +1,53 @@
-"""Scoring and difficulty probes for RecruitEnv (read-only, 200 seeds per task).
+"""Scoreboard of the reference policies (read-only).
 
-The findings in docs/research/2026-11-21-findings-and-roadmap.md came from the
-v1.0.0 version of this script (tag `v1.0.0`). This version runs against the
-2.x API, where the grader's score is the episode score. Run from the repo root:
+Plays every reference policy in ``env/policies.py`` on every task and prints
+the mean score and the share of seeds that pass the task's success
+threshold. The 1.0.0 findings in docs/research/2026-11-21-findings-and-roadmap.md
+came from an earlier version of this script (tag ``v1.0.0``). Acceptance
+criteria for the 3.0.0 generator are checked by scripts/difficulty_sweep.py
+and tests/test_acceptance.py.
 
-    PYTHONDONTWRITEBYTECODE=1 uv run --no-project --python 3.11 \
-        --with fastapi --with pydantic --with numpy --with python-dotenv \
-        python scripts/probe_scoring.py
-
-Columns: `grader` is `grade_report()["score"]`, `env_score` is the terminal
-`episode_score` (they must agree), `pass%` is the share of seeds where the
-score meets the task's success threshold.
+    python scripts/probe_scoring.py [--seeds 200]
 """
+
+from __future__ import annotations
+
+import argparse
 import statistics as st
 import sys
 
 sys.path.insert(0, ".")
 
-from env.environment import RecruitmentEnvironment
-from env.fairness import FairnessChecker
-from env.models import CheckPlatformAction, MakeDecisionAction, ReadResumeSectionAction
-from tasks import TASK_REGISTRY
+from env import policies  # noqa: E402
+from env.environment import RecruitmentEnvironment  # noqa: E402
+from tasks import TASK_REGISTRY  # noqa: E402
 
-SEEDS = range(200)
-TASKS = ["easy", "medium", "hard"]
-
-
-def run(task, seed, policy):
-    env = RecruitmentEnvironment()
-    obs = env.reset(task, seed)
-    final = policy(env, obs)
-    state = env.state()
-    return env.grade_report()["score"], state.episode_score, state, final
+ROWS = [
+    "oracle", "rubric_heuristic", "fixed_order", "random",
+    "single_github", "single_leetcode", "single_kaggle", "single_experience", "single_skills",
+    "lsq_github", "lsq_skills",
+]
 
 
-def finish(env):
-    """Burn remaining budget by re-reading one section so the episode terminates."""
-    last = None
-    cid = env.state().candidates_summary[0]["id"]
-    while not env.state().is_done:
-        last = env.step(ReadResumeSectionAction(candidate_id=cid, section="education"))
-    return last
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--seeds", type=int, default=200)
+    args = ap.parse_args()
+    seeds = range(args.seeds)
+    print(f"{'policy':20s} " + " ".join(f"{t + ' mean':>11s} {t + ' pass':>10s}" for t in TASK_REGISTRY))
+    for name in ROWS:
+        cells = []
+        for task, cfg in TASK_REGISTRY.items():
+            scores = []
+            for seed in seeds:
+                env = RecruitmentEnvironment()
+                env.reset(task, seed)
+                policies.POLICIES[name](env)
+                scores.append(env.state().episode_score)
+            passed = sum(s >= cfg.success_threshold for s in scores) / len(scores)
+            cells.append(f"{st.mean(scores):11.3f} {100 * passed:9.0f}%")
+        print(f"{name:20s} " + " ".join(cells), flush=True)
 
 
-# --- policies ---------------------------------------------------------------
-
-def oracle(env, obs):
-    """Decide everything correctly using ground truth, no information gathering."""
-    last = None
-    for c in env.verifier_state().candidates:
-        if env.state().is_done:
-            break
-        last = env.step(MakeDecisionAction(candidate_id=c.id, decision=c.ground_truth_label))
-    return last
-
-
-def do_nothing(env, obs):
-    return finish(env)
-
-
-def all_hold(env, obs):
-    last = None
-    for c in obs.candidates_summary:
-        if env.state().is_done:
-            break
-        last = env.step(MakeDecisionAction(candidate_id=c["id"], decision="hold"))
-    return last
-
-
-def all_shortlist(env, obs):
-    last = None
-    for c in obs.candidates_summary:
-        if env.state().is_done:
-            break
-        last = env.step(MakeDecisionAction(candidate_id=c["id"], decision="shortlist"))
-    return last
-
-
-def one_signal(env, obs):
-    """One LeetCode check per candidate, threshold on `contest_rating` only.
-
-    Shortlists are decided as soon as found; other labels only if budget allows.
-    """
-    last = None
-    pending = []
-    for c in obs.candidates_summary:
-        if env.state().is_done:
-            return last
-        _, _, done, info = env.step(CheckPlatformAction(candidate_id=c["id"], platform="leetcode"))
-        if done:
-            return last
-        rating = info["data"]["contest_rating"]
-        label = "shortlist" if rating >= 1601 else ("reject" if rating < 1200 else "hold")
-        if label == "shortlist":
-            last = env.step(MakeDecisionAction(candidate_id=c["id"], decision=label))
-            if last[2]:
-                return last
-        else:
-            pending.append((c["id"], label))
-    for cid, label in pending:
-        if env.state().is_done:
-            break
-        last = env.step(MakeDecisionAction(candidate_id=cid, decision=label))
-    if not env.state().is_done:
-        last = finish(env)
-    return last
-
-
-def one_correct_reject(env, obs):
-    """Decide exactly one candidate (a true reject) and let the budget run out."""
-    c = next(c for c in env.verifier_state().candidates if c.ground_truth_label == "reject")
-    env.step(MakeDecisionAction(candidate_id=c.id, decision="reject"))
-    return finish(env)
-
-
-POLICIES = {
-    "oracle (all correct, 0 checks)": oracle,
-    "do nothing": do_nothing,
-    "all hold": all_hold,
-    "all shortlist": all_shortlist,
-    "1 leetcode check + threshold": one_signal,
-    "decide ONE true reject only": one_correct_reject,
-}
-
-print(f"{'policy':34s} {'task':7s} {'grader':>8s} {'env_score':>10s} {'pass%':>6s}")
-for name, pol in POLICIES.items():
-    for task in TASKS:
-        g, e = [], []
-        for seed in SEEDS:
-            gs, es, _, _ = run(task, seed, pol)
-            g.append(gs)
-            e.append(es if es is not None else float("nan"))
-        thr = TASK_REGISTRY[task].success_threshold
-        print(f"{name:34s} {task:7s} {st.mean(g):8.3f} {st.mean(e):10.3f} {100*sum(x>=thr for x in g)/len(g):5.0f}%")
-
-# --- fairness penalty on a perfectly correct (oracle) agent -------------------
-print("\nfairness penalty applied to a 100%-correct agent:")
-for task in TASKS:
-    pens = []
-    for seed in SEEDS:
-        env = RecruitmentEnvironment()
-        env.reset(task, seed)
-        s = env.verifier_state()
-        dec = {c.id: c.ground_truth_label for c in s.candidates}
-        pens.append(FairnessChecker.compute_penalty(dec, s.candidates))
-    print(f"  {task:7s} mean={st.mean(pens):.3f}  penalised in {100*sum(p>0 for p in pens)/len(pens):.0f}% of seeds, max(0.2) in {100*sum(p>=0.2 for p in pens)/len(pens):.0f}%")
-
-# --- is any single revealed field a perfect label separator? ------------------
-print("\nsingle-field separability of labels (200 seeds, hard task):")
-rows = []
-for seed in SEEDS:
-    env = RecruitmentEnvironment()
-    env.reset("hard", seed)
-    for c in env.verifier_state().candidates:
-        rows.append((c.ground_truth_label, c))
-fields = {
-    "leetcode.contest_rating": lambda c: c.leetcode.contest_rating,
-    "leetcode.hard": lambda c: c.leetcode.hard,
-    "leetcode.global_rank_percentile": lambda c: c.leetcode.global_rank_percentile,
-    "github.stars_received": lambda c: c.github.stars_received,
-    "github.repos": lambda c: c.github.repos,
-    "github.contributions_last_year": lambda c: c.github.contributions_last_year,
-    "kaggle.best_finish_percentile": lambda c: c.kaggle.best_finish_percentile,
-    "resume.experience.years": lambda c: c.resume_sections["experience"].years_experience,
-}
-for fname, f in fields.items():
-    rng = {}
-    for lab, c in rows:
-        v = f(c)
-        lo, hi = rng.get(lab, (v, v))
-        rng[lab] = (min(lo, v), max(hi, v))
-    r, h, s_ = rng["reject"], rng["hold"], rng["shortlist"]
-    sep = r[1] < h[0] and h[1] < s_[0]
-    print(f"  {fname:34s} reject={r} hold={h} shortlist={s_}  perfectly separable={sep}")
-
-# --- conflicted candidates in medium -----------------------------------------
-print("\nmedium task: do candidates 0 and 1 actually have conflicting signals?")
-tier = lambda v, a, b: "senior" if v >= b else ("junior" if v < a else "mid")
-conf = 0
-for seed in SEEDS:
-    env = RecruitmentEnvironment()
-    env.reset("medium", seed)
-    for c in env.verifier_state().candidates[:2]:
-        t = {tier(c.leetcode.contest_rating, 1200, 1601), tier(c.github.repos, 10, 30)}
-        conf += len(t) > 1
-print(f"  conflicted (github tier != leetcode tier): {conf} of {2*len(SEEDS)}")
-
-# --- step reward farming ------------------------------------------------------
-env = RecruitmentEnvironment()
-obs = env.reset("hard", 42)
-tot = 0.0
-done = False
-for c in obs.candidates_summary:
-    for platform in ("github", "leetcode", "kaggle"):
-        if done:
-            break
-        _, r, done, _ = env.step(CheckPlatformAction(candidate_id=c["id"], platform=platform))
-        tot += r.step_reward
-print(f"\nsum of step rewards from revealing until the budget ends, zero decisions (hard): {tot:.3f}")
-print("observation.revealed_data after a check carries stats?:", end=" ")
-env = RecruitmentEnvironment(); obs = env.reset("easy", 42)
-cid = obs.candidates_summary[0]["id"]
-o, _, _, info = env.step(CheckPlatformAction(candidate_id=cid, platform="github"))
-print(o.revealed_data[cid]["platforms"]["github"] == info["data"])
+if __name__ == "__main__":
+    main()
