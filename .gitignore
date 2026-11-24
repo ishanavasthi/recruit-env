@@ -31,3 +31,6 @@ node_modules
 logs/
 
 sample_inference.py
+# Benchmark and agent run outputs (regenerable; committed model logs live in docs/results/runs)
+outputs/*
+!outputs/.gitkeep
