@@ -17,7 +17,8 @@ from env.models import (
     ReadResumeSectionAction,
     Reward,
 )
-from env.profile_factory import ProfileFactory
+from env import rubric
+from env.profile_factory import GENERATOR_VERSION, ProfileFactory, display_names
 
 
 def _load_registries() -> tuple[dict, dict]:
@@ -43,6 +44,7 @@ class RecruitmentEnvironment:
     def __init__(self) -> None:
         self._state: EpisodeState | None = None
         self._initial_obs: Observation | None = None
+        self._grade_result: Any = None
         self._factory = ProfileFactory()
         self._task_registry, self._grader_registry = _load_registries()
         self._lock = threading.Lock()
@@ -51,11 +53,19 @@ class RecruitmentEnvironment:
     # reset
     # ------------------------------------------------------------------
 
-    def reset(self, task_id: str, seed: int = 42) -> Observation:
+    def reset(
+        self,
+        task_id: str,
+        seed: int = 42,
+        name_seed: int = 0,
+        name_blind: bool = False,
+    ) -> Observation:
         """Reset the environment for a new episode.
 
         Generates a job description and candidate pool deterministically
-        from the given seed, then returns the initial observation.
+        from *seed*. *name_seed* redraws only the names (a name-swap replay:
+        every signal and label stays the same). With *name_blind* the agent
+        sees neutral labels ("Candidate 07") instead of names.
 
         Raises ``ValueError`` if *task_id* is not in the task registry.
         """
@@ -67,28 +77,30 @@ class RecruitmentEnvironment:
                 )
 
             task = self._task_registry[task_id]
-
-            jd = self._factory.generate_job_description(
-                seed=seed, role_type=task.role_type,
-            )
-            pool = self._factory.generate_pool(
+            ep = self._factory.generate_episode(
                 seed=seed,
-                count=task.candidate_count,
-                label_distribution=dict(task.label_distribution),
+                quotas=task.quotas,
+                required_conflicts=task.required_conflicts,
+                name_seed=name_seed,
             )
-
-            summary = [{"id": c.id, "name": c.name} for c in pool]
 
             self._state = EpisodeState(
                 task_id=task_id,
                 seed=seed,
                 step_number=0,
                 max_steps=task.max_steps,
-                job_description=jd,
-                candidates=pool,
-                candidates_summary=summary,
+                job_description=ep.jd,
+                candidates=ep.candidates,
+                candidates_summary=display_names(ep.candidates, name_blind),
                 revealed_data={},
                 decisions_made={},
+                quotas=task.quotas,
+                conflicts=ep.conflicts,
+                twins=ep.twins,
+                decision_context={},
+                name_seed=name_seed,
+                name_blind=name_blind,
+                generator_version=GENERATOR_VERSION,
                 is_done=False,
                 episode_score=None,
             )
@@ -193,6 +205,9 @@ class RecruitmentEnvironment:
                 candidates_summary=[dict(c) for c in s.candidates_summary],
                 revealed_data=_copy_revealed(s.revealed_data),
                 decisions_made=dict(s.decisions_made),
+                quotas=dict(s.quotas),
+                name_blind=s.name_blind,
+                generator_version=s.generator_version,
                 is_done=s.is_done,
                 episode_score=s.episode_score,
             )
@@ -213,6 +228,9 @@ class RecruitmentEnvironment:
 
         The breakdown includes ground-truth labels, so it is only available
         once the episode is done.
+
+        Includes the verifier's named checks (``checks``), gates (``gates``)
+        and the score before gates were applied.
 
         Raises ``ValueError`` if no active episode, ``RuntimeError`` if the
         episode is still running.
@@ -239,6 +257,9 @@ class RecruitmentEnvironment:
                 "total": len(s.candidates),
                 "steps_used": s.step_number,
                 "max_steps": s.max_steps,
+                "score_before_gates": round(self._grade_result.score_before_gates, 6),
+                "checks": [c.model_dump() for c in self._grade_result.checks],
+                "gates": [g.model_dump() for g in self._grade_result.gates],
             }
 
     # ------------------------------------------------------------------
@@ -299,7 +320,9 @@ class RecruitmentEnvironment:
         s: EpisodeState,
         info: dict[str, Any],
     ) -> None:
-        s.decisions_made[action.candidate_id] = action.decision
+        cid = action.candidate_id
+        s.decisions_made[cid] = action.decision
+        s.decision_context[cid] = revealed_sources(s.revealed_data.get(cid))
         info["decision_recorded"] = True
 
     # ------------------------------------------------------------------
@@ -315,7 +338,8 @@ class RecruitmentEnvironment:
         s = self._state
         assert s is not None and self._initial_obs is not None
         grader = self._grader_registry[s.task_id]
-        return round(grader.grade(self._initial_obs, s.model_copy(deep=True)), 6)
+        self._grade_result = grader.evaluate(self._initial_obs, s.model_copy(deep=True))
+        return round(self._grade_result.score, 6)
 
     def _build_observation(self) -> Observation:
         """Build an Observation from the current state."""
@@ -329,6 +353,7 @@ class RecruitmentEnvironment:
             candidates_summary=[dict(c) for c in s.candidates_summary],
             revealed_data=_copy_revealed(s.revealed_data),
             decisions_made=dict(s.decisions_made),
+            quotas=dict(s.quotas),
             done=s.is_done,
         )
 
@@ -349,6 +374,14 @@ def _find_candidate(s: EpisodeState, cid: str) -> CandidateProfile:
 def _revealed_for(s: EpisodeState, cid: str) -> dict[str, dict[str, Any]]:
     """Return (creating if needed) the revealed-data record for a candidate."""
     return s.revealed_data.setdefault(cid, {"resume_sections": {}, "platforms": {}})
+
+
+def revealed_sources(record: dict[str, Any] | None) -> list[str]:
+    """Sorted rubric sources present in one candidate's revealed record."""
+    if not record:
+        return []
+    have = set(record.get("platforms", {})) | set(record.get("resume_sections", {}))
+    return sorted(s for s in rubric.SOURCES if s in have)
 
 
 def _copy_revealed(revealed: dict[str, Any]) -> dict[str, Any]:

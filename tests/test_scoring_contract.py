@@ -7,7 +7,9 @@ maximum, and every lazy or degenerate "mutant" policy must fail the task by a
 wide margin on every seed.
 
 The oracle reads ground truth through ``verifier_state()``, which is the
-verifier's view and is never exposed to an agent.
+verifier's view and is never exposed to an agent. On medium it also reveals
+each conflicted candidate's two disagreeing sources before deciding, which
+the ``conflicts_investigated`` check requires.
 """
 
 from __future__ import annotations
@@ -18,6 +20,8 @@ import pytest
 
 from env.environment import RecruitmentEnvironment
 from env.models import CheckPlatformAction, MakeDecisionAction, ReadResumeSectionAction
+from env import policies, rubric
+from env.profile_factory import fill_quotas
 from tasks import GRADER_REGISTRY, TASK_REGISTRY
 
 SEEDS = range(200)
@@ -54,9 +58,7 @@ def _decide_all(env: RecruitmentEnvironment, decide: Callable[[str], str]) -> li
 # --- reference solution -------------------------------------------------------
 
 
-def oracle(env: RecruitmentEnvironment) -> list[float]:
-    truth = {c.id: c.ground_truth_label for c in env.verifier_state().candidates}
-    return _decide_all(env, lambda cid: truth[cid])
+oracle = policies.oracle
 
 
 # --- mutants ------------------------------------------------------------------
@@ -158,3 +160,23 @@ def test_one_score(task: str, policy: str) -> None:
         regraded = GRADER_REGISTRY[task].grade(initial_obs, env.verifier_state())
         assert score == pytest.approx(regraded, abs=1e-6)
         assert env.grade_report()["score"] == score
+
+
+@pytest.mark.parametrize("task", TASKS)
+def test_bayes_ceiling(task: str) -> None:
+    """Applying the published rubric to fully revealed data scores the maximum.
+
+    Decisions come from ``fill_quotas`` over rubric estimates of fully revealed
+    records, graded directly (no step budget), with every source recorded as
+    seen at decision time.
+    """
+    grader = GRADER_REGISTRY[task]
+    for seed in SEEDS:
+        env = RecruitmentEnvironment()
+        obs = env.reset(task, seed)
+        state = env.verifier_state()
+        jd = state.job_description
+        est = {c.id: rubric.estimate(rubric.reveal_record(c, rubric.SOURCES), jd).total for c in state.candidates}
+        state.decisions_made = fill_quotas(est, state.quotas)
+        state.decision_context = {c.id: sorted(rubric.SOURCES) for c in state.candidates}
+        assert grader.grade(obs, state) >= ORACLE_MIN, f"{task} seed={seed}"
