@@ -15,8 +15,18 @@ Newest first.
   - OpenEnv's HTTP `/reset` and `/step` are stateless, so episodes need `/ws`.
   - `action_cls` must be one class, not a union.
   - `openenv validate --level static` reads WARN with exit 0 even when it passes.
-  - The worst one: at `max_tokens=512`, both Claude models spent the cap reasoning and returned empty text. `inference.py` silently turned each of those replies into "hold", so the model scores published with 3.0.0 were really a mix of model and fallback. A decision step needs 4,000–7,500 completion tokens.
+  - The worst one: at `max_tokens=512`, both Claude models spent the cap reasoning and returned empty text. `inference.py` silently turned each of those replies into "hold".
+    - The scripts never recorded when a fallback fired, so the model scores published with 3.0.0 cannot be attributed to the models, and they are withdrawn.
+    - Evidence: the 512-token pilot was cut off within a few steps of every episode. At 16,000 tokens, 19 of 30 Sonnet decide-only replies needed more than the old 4,000 cap.
 - **Takeaway:** a fallback in an evaluation harness is a measurement bug. Count failures; never substitute for them. Pilot a few full episodes before committing to a large model run.
+
+## 2026-11-25: first model baselines (10 seeds)
+
+- **What:** 120 model episodes, step by step and decide-only, for Claude Haiku 5.5 and Sonnet 5.5. None were incomplete, there were no cut-offs or API errors, and every log replays. They used about 17M tokens and about 1 h 50 min at concurrency 3 per model.
+- **Finding:** applying the rubric is easy for both models. Choosing what to read step by step costs them 0.10–0.22 on easy and medium against the rule-based heuristic.
+- **Gotcha:** `git filter-branch` removed regenerable outputs from history, but its final checkout also deleted them from disk.
+- **Takeaway:** never `git add -A` while a run is writing files into the repo. Ignore output directories first.
+- **Still open:** #12 asks for 50+ seeds. The runner is resumable, so more seeds can be added in PR D.
 
 ## 2026-11-25: Space redeployed to 3.0.0
 

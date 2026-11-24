@@ -12,7 +12,7 @@
 | — | Hugging Face Space redeployed to 3.0.0 | Done 2026-11-25 | Space commit `3e29bbe` |
 | 4 | Standalone core, OpenEnv adapter, concurrency (#11) | Done (4.0.0) | PR C |
 | — | JSONL transition logs and replay (#8) | Done (4.0.0) | PR C |
-| 5 | Baseline table and training example (#12) | Mostly done (4.0.0); the GPU reward curve awaits the owner's choice of Colab or HF Jobs | PR C |
+| 5 | Baseline table and training example (#12) | Mostly done (4.0.0). The baseline table covers 10 seeds (goal 50+, in PR D). The GPU reward curve awaits the owner's choice of Colab or HF Jobs | PR C |
 | 6 | Public face: README, results page, report, demo, PyPI | Not started | PR D |
 | 7 | Extensions (#2 ranking, #3 reasons, per-action costs, …) | Not started | later |
 

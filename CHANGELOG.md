@@ -44,7 +44,7 @@ The 3.0.0 pull request reported model scores that are now withdrawn:
 
 Both scripts then substituted a fallback for an unusable reply, and their output did not record whether the fallback fired.
 - **Haiku.** At the step-by-step script's 512-token cap, a pilot of the same models on 2026-11-25 returned empty, cut-off replies within the first few steps of every episode. Each of those would have become a fallback "hold".
-- **Sonnet.** The decide-only script's 4,000-token cap is below what a decision step used in the pilot (up to about 7,500 completion tokens), so its scores may be the rubric fallback's.
+- **Sonnet.** The decide-only script used a 4,000-token cap. In this release's decide-only runs at 16,000, 19 of Sonnet's 30 replies (and all 30 of Haiku's) needed more than 4,000 completion tokens. So the old scores were probably largely the rubric fallback's.
 
 [docs/results/baselines.md](docs/results/baselines.md) replaces these numbers.
 

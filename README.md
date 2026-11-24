@@ -323,13 +323,15 @@ Mean score and pass rate on seeds 0–9 of each task: the same 10 seeds for ever
 
 Over all 200 seeds, the rubric heuristic scores 0.732 on hard (66% pass) and fixed order 0.530.
 
-What this shows, with only 10 seeds per cell:
-- **Applying the rubric is not the hard part.** Decide-only, where Python gathers the evidence, scores near the maximum on easy and medium.
-- **Playing step by step costs points.** Choosing what to read and tracking about 50 steps of evidence, both models fall below the rule-based heuristic on every task.
-- **On hard, no agent shown here prioritises well.** Every agent scores well below the oracle.
-- **Haiku against Sonnet.** Haiku's step-by-step scores are higher, but every interval overlaps, so this run cannot rank the two models.
+What the paired differences show (model minus rubric heuristic on the same seed, with a 95% bootstrap interval). With 10 seeds, only differences whose interval excludes 0 are claimed:
+- **Applying the rubric is not the hard part.** Decide-only, where Python gathers the evidence, matches the heuristic on easy and medium.
+- **Playing step by step costs points on easy and medium.** On easy and medium, both models choose what to read themselves and score below the heuristic:
+  - Haiku: −0.10 on easy (interval −0.20 to −0.02) and −0.16 on medium (−0.29 to −0.05).
+  - Sonnet: −0.15 on easy (−0.29 to −0.03) and −0.22 on medium (−0.39 to −0.05).
+- **Hard needs more seeds.** On 10 seeds no comparison on hard is conclusive. Fixed order even scores above the heuristic there, the reverse of the 200-seed result.
+- **Haiku against Sonnet.** The two models are not separable: every paired interval contains 0.
 
-Every model episode completed, with no cut-off replies and no API errors, and every episode's log is committed under `docs/results/runs/`. The 120 model episodes used about 17M tokens. Each step-by-step episode used 190k–440k tokens and took 4–13 minutes.
+Every model episode completed, with no cut-off replies and no API errors, and every episode's log is committed under `docs/results/runs/`. The 120 model episodes used about 17M tokens. Each step-by-step episode used 160k–450k tokens and took 3–27 minutes, run three at a time per model.
 
 ---
 

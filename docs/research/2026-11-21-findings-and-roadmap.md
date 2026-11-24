@@ -21,7 +21,7 @@ Updated 2026-11-25. The living build log is in [`.plans/`](../../.plans/implemen
 | 2. Make the task real | Done | 3.0.0, PR #14 ([spec](../superpowers/specs/2026-11-24-real-task-and-fairness-audit-design.md)) |
 | 3. Fairness as an audit | Done | 3.0.0, PR #14 |
 | 4. Standalone core, OpenEnv adapter | Done | 4.0.0, PR C ([spec](../superpowers/specs/2026-11-25-standalone-core-logs-baselines-design.md)) |
-| 5. Show learning | Baseline table and training example done; the reward curve needs a GPU run (the owner chooses Colab or HF Jobs) | 4.0.0, PR C |
+| 5. Show learning | Baseline table done at 10 seeds (the goal is 50+, to extend in PR D); training example done; the reward curve needs a GPU run (the owner chooses Colab or HF Jobs) | 4.0.0, PR C |
 | 6. Public face | Not started | PR D |
 | 7. Extensions | Not started | later |
 

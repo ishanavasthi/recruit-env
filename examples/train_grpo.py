@@ -24,9 +24,10 @@ or in Colab: ``!pip install uv && uv run examples/train_grpo.py``.
 
 CPU smoke test of the whole pipeline (no learning; a random tiny model makes
 no tool calls, so the reward stays at the floor). Checked on 2026-11-25 with
-TRL 1.18.2, transformers 5.24.1 and torch 2.15 (CPU), about 30 seconds:
+TRL 1.18.2, transformers 5.24.1 and torch 2.15 (CPU), in a local virtualenv
+with the repo installed, in about 30 seconds:
 
-    uv run examples/train_grpo.py --cpu --episodes 8 \
+    python examples/train_grpo.py --cpu --episodes 8 \
         --model trl-internal-testing/tiny-Qwen3MoeForCausalLM
 
 TRL must recognise the model's chat template to parse tool calls:
