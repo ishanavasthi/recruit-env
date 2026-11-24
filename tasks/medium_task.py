@@ -1,9 +1,9 @@
 """Medium task — 'Conflicted Signals'.
 
 8 candidates; shortlist the best 3. Exactly two candidates are conflicted:
-two of their sources disagree sharply and judging them by either one alone
-gives the wrong label. The budget (50 steps) covers reading all five rubric
-sources for everyone plus every decision.
+two of their sources disagree sharply and judging them by at least one of
+the two alone gives the wrong label. The budget (50 steps) covers reading
+all five rubric sources for everyone plus every decision.
 """
 
 from __future__ import annotations

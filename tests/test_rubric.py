@@ -140,3 +140,18 @@ def test_name_table_balanced_and_unambiguous() -> None:
     assert group_of(NAME_TABLE[0][0]) == NAME_TABLE[0][1:]
     assert group_of("Nobody Here") is None
     assert blind_label(6) == "Candidate 07"
+
+
+@pytest.mark.parametrize("role", ROLES)
+def test_rubric_is_monotone_in_every_platform(role: str) -> None:
+    """Better evidence on any platform never lowers the total."""
+    jd = _jd(role)
+    base = dict(stars=100, rating=1500, kaggle_pct=50.0, skills=jd.required_skills[:2])
+    for field, values in (("stars", [0, 50, 200, 2000]), ("rating", [900, 1300, 1700, 2300]),
+                          ("kaggle_pct", [1.0, 30.0, 70.0, 99.0])):
+        totals = [rubric.score(_profile(**{**base, field: v}), jd).total for v in values]
+        assert all(a < b for a, b in zip(totals, totals[1:])), (field, totals)
+    for p in (_profile(kaggle_pct=1.0), _profile(stars=5000, rating=2400)):
+        low = rubric.score(p, jd).total
+        p.kaggle.best_finish_percentile = 99.0
+        assert rubric.score(p, jd).total > low

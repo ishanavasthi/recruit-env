@@ -41,9 +41,9 @@ TRAIN_SEEDS = range(1000, 1200)
 # screening source.
 SOURCE_PRIORITY: dict[str, tuple[str, ...]] = {
     "ml_engineer": ("leetcode", "kaggle", "github", "skills", "experience"),
-    "frontend_dev": ("github", "leetcode", "skills", "experience", "kaggle"),
-    "backend_dev": ("leetcode", "github", "experience", "skills", "kaggle"),
-    "data_scientist": ("leetcode", "skills", "kaggle", "github", "experience"),
+    "frontend_dev": ("leetcode", "skills", "github", "kaggle", "experience"),
+    "backend_dev": ("leetcode", "skills", "experience", "kaggle", "github"),
+    "data_scientist": ("leetcode", "kaggle", "github", "skills", "experience"),
 }
 
 
@@ -102,7 +102,8 @@ def _decisions_needed(env: RecruitmentEnvironment, s: Any = None) -> int:
     s = s or env.state()
     if s.task_id != "hard":
         return len(s.candidates_summary) - len(s.decisions_made)
-    return s.quotas["shortlist"] - sum(1 for d in s.decisions_made.values() if d == "shortlist")
+    # One spare step: tied candidates (twins) at the cut are both shortlisted.
+    return s.quotas["shortlist"] + 1 - sum(1 for d in s.decisions_made.values() if d == "shortlist")
 
 
 def _estimates(env: RecruitmentEnvironment, s: Any = None) -> dict[str, float]:
@@ -137,9 +138,9 @@ def oracle(env: RecruitmentEnvironment) -> list[float]:
 def rubric_full_read(env: RecruitmentEnvironment) -> list[float]:
     """Read every rubric source of every candidate in order, reserving budget to decide.
 
-    With enough budget (medium) this is a full read and scores the maximum.
-    Without it (easy, hard) it is the fixed-order heuristic: candidates late
-    in the list are judged on priors.
+    With enough budget (easy, medium) this is a full read and scores the
+    maximum. Without it (hard) it is the fixed-order heuristic: candidates
+    late in the list are judged on priors.
     """
     rewards: list[float] = []
     s = env.state()

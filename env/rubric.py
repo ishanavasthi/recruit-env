@@ -35,9 +35,11 @@ two different inputs tie):
   - ``github   = 0.6*h(ln(1+stars), ln(1+150)) + 0.4*h(repos, 15)``
   - ``kaggle   = 0.5*percentile/100 + 0.3*rank_value + 0.2*h(3*gold + 2*silver + bronze, 6)``
 
-- **technical** = weighted mean of the three platform sub-scores with the
-  role's ``TECH_WEIGHTS``, minus ``KAPPA`` (1.0) times their weighted
-  standard deviation (claims of strength need corroboration).
+- **technical** = weighted power mean of the three platform sub-scores with
+  exponent ``TECH_POWER`` (-2) and the role's ``TECH_WEIGHTS``:
+  ``(sum w_k * sub_k**-2) ** (-1/2)``. It rises with every sub-score but sits
+  below the plain mean when they disagree, so a strong claim on one platform
+  needs corroboration from the others.
 - **growth** = ``0.5*activity + 0.5*practice``: GitHub activity
   ``0.5*h(streak, 45) + 0.5*h(contributions, 300)`` and LeetCode practice
   volume ``h(problems_solved, 150)``.
@@ -68,7 +70,7 @@ SOURCES: tuple[str, ...] = ("github", "leetcode", "kaggle", "experience", "skill
 PLATFORMS: tuple[str, ...] = ("github", "leetcode", "kaggle")
 RESUME_SOURCES: tuple[str, ...] = ("experience", "skills")
 
-KAPPA = 1.0
+TECH_POWER = -2.0  # weighted power mean: below 1, a weak platform pulls technical down
 SLACK_YEARS = 1.5
 SKILL_FLOOR = 0.75
 
@@ -91,14 +93,14 @@ KAGGLE_RANK_VALUE: dict[str, float] = {
 # measured by `python scripts/difficulty_sweep.py --priors`. Platform entries
 # are sub-scores; claimed_years is in years; skill_match is a share.
 PRIORS: dict[str, dict[str, float]] = {
-    "backend_dev": {"github": 0.452, "leetcode": 0.479, "kaggle": 0.434, "github_activity": 0.418,
-                    "leetcode_practice": 0.401, "claimed_years": 4.239, "skill_match": 0.475},
-    "data_scientist": {"github": 0.452, "leetcode": 0.472, "kaggle": 0.43, "github_activity": 0.412,
-                       "leetcode_practice": 0.398, "claimed_years": 4.279, "skill_match": 0.482},
-    "frontend_dev": {"github": 0.449, "leetcode": 0.478, "kaggle": 0.426, "github_activity": 0.415,
-                     "leetcode_practice": 0.399, "claimed_years": 4.221, "skill_match": 0.475},
-    "ml_engineer": {"github": 0.45, "leetcode": 0.478, "kaggle": 0.438, "github_activity": 0.413,
-                    "leetcode_practice": 0.4, "claimed_years": 4.296, "skill_match": 0.474},
+    "backend_dev": {"github": 0.449, "leetcode": 0.478, "kaggle": 0.426, "github_activity": 0.414,
+                    "leetcode_practice": 0.399, "claimed_years": 4.229, "skill_match": 0.475},
+    "data_scientist": {"github": 0.45, "leetcode": 0.48, "kaggle": 0.439, "github_activity": 0.416,
+                       "leetcode_practice": 0.402, "claimed_years": 4.227, "skill_match": 0.478},
+    "frontend_dev": {"github": 0.45, "leetcode": 0.476, "kaggle": 0.432, "github_activity": 0.414,
+                     "leetcode_practice": 0.397, "claimed_years": 4.318, "skill_match": 0.48},
+    "ml_engineer": {"github": 0.454, "leetcode": 0.48, "kaggle": 0.434, "github_activity": 0.412,
+                    "leetcode_practice": 0.399, "claimed_years": 4.26, "skill_match": 0.481},
 }
 
 
@@ -221,9 +223,7 @@ def estimate(revealed: dict[str, Any] | None, jd: JobDescription) -> RubricBreak
     growth = growth_subscore(gh, platforms.get("leetcode"), jd)
 
     w = TECH_WEIGHTS[jd.role_type]
-    mean = sum(w[k] * sub[k] for k in PLATFORMS)
-    spread = math.sqrt(sum(w[k] * (sub[k] - mean) ** 2 for k in PLATFORMS))
-    technical = mean - KAPPA * spread
+    technical = sum(w[k] * max(sub[k], 1e-6) ** TECH_POWER for k in PLATFORMS) ** (1.0 / TECH_POWER)
 
     exp_sec = sections.get("experience")
     if exp_sec:

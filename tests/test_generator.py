@@ -145,15 +145,15 @@ def _pool_hash(task: str, seed: int) -> str:
 
 
 PINNED: dict[tuple[str, int], str] = {
-    ("easy", 0): "a9d5a4912e3900c1",
-    ("easy", 1): "2133d700c372ad11",
-    ("easy", 2): "e39b4dc2ed7276c8",
-    ("medium", 0): "01b68061342592ed",
-    ("medium", 1): "06438fc42cc120f4",
-    ("medium", 2): "6764bd42cbc95dcb",
-    ("hard", 0): "9071670a12fdd760",
-    ("hard", 1): "7761a22e7794527c",
-    ("hard", 2): "8b42bf7460fc34f7",
+    ("easy", 0): "2fe6b13b1cb4fc49",
+    ("easy", 1): "2a15ce3f81927e6c",
+    ("easy", 2): "afe8c3deebb28247",
+    ("medium", 0): "e6ab36d29a45a40b",
+    ("medium", 1): "6585099f4fa039bc",
+    ("medium", 2): "2bbd383841c4e69b",
+    ("hard", 0): "81b5e1dba20143ac",
+    ("hard", 1): "231d35e6a317e111",
+    ("hard", 2): "b65bcc22fef12d0c",
 }
 
 
@@ -188,3 +188,16 @@ def test_observation_has_quotas_and_no_secrets() -> None:
     blob = obs.model_dump_json()
     for secret in ("ground_truth", "conflicts", "twins", "origin", "gender", "decision_context"):
         assert secret not in blob
+
+
+def test_tasks_sharing_a_seed_share_no_candidates() -> None:
+    """Reading one task's pool must not reveal another task's pool for the same seed."""
+    def numbers(c):
+        return json.dumps([c.github.model_dump(exclude={"notable_projects", "top_languages"}),
+                           c.leetcode.model_dump(), c.kaggle.model_dump()], sort_keys=True)
+
+    for seed in range(50):
+        pools = {t: {numbers(c) for c in _episode(t, seed).candidates} for t in TASKS}
+        assert not pools["easy"] & pools["hard"]
+        assert not pools["easy"] & pools["medium"]
+        assert not pools["medium"] & pools["hard"]

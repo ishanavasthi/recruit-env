@@ -1,6 +1,6 @@
 """LLM baseline agent for RecruitEnv.
 
-Python gathers evidence; the model judges it. For each task the script
+Python gathers evidence; the model decides from it. For each task the script
 reveals sources breadth-first in the role's priority order (every
 candidate's first source, then every candidate's second, ...) while keeping
 enough budget for the decisions. It then sends the job description, the
@@ -101,8 +101,8 @@ def _post_step(http: httpx.Client, action: dict) -> dict:
 
 
 def _decisions_needed(obs: dict) -> int:
-    if obs["task_id"] == "hard":  # undecided counts as not shortlisted
-        return obs["quotas"]["shortlist"]
+    if obs["task_id"] == "hard":  # undecided counts as not shortlisted; +1 for a tie at the cut
+        return obs["quotas"]["shortlist"] + 1
     return len(obs["candidates_summary"]) - len(obs["decisions_made"])
 
 

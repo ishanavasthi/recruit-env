@@ -84,22 +84,35 @@ def finalize(checks: list[Check], gates: list[Gate]) -> GradeResult:
     return GradeResult(checks=checks, gates=gates, score_before_gates=before, score=score)
 
 
-def twin_gate(state: EpisodeState, threshold: float) -> Gate:
+def twin_context(state: EpisodeState, cid: str) -> list[str]:
+    """Sources revealed for *cid* when it was decided, or by the end if undecided."""
+    if cid in state.decision_context:
+        return state.decision_context[cid]
+    from env.environment import revealed_sources
+
+    return revealed_sources(state.revealed_data.get(cid))
+
+
+def twin_gate(state: EpisodeState, threshold: float, undecided_as: str | None = None) -> Gate:
     """Counterfactual twin consistency.
 
-    Fails on a like-for-like flip: both twins decided, the same rubric
-    sources revealed for each when it was decided, and different decisions.
-    A difference explained by different information is not a flip. On
-    failure the score is capped at ``threshold - 0.05``, so the task fails.
+    Fails on a like-for-like flip: the twins' (effective) decisions differ
+    although the same rubric sources were revealed for each when it was
+    decided. A difference explained by different information is not a flip.
+    With *undecided_as* (hard: ``"hold"``) an undecided twin counts as that
+    decision, judged on what was revealed by the end; otherwise a pair with
+    an undecided twin is skipped. On failure the score is capped at
+    ``threshold - 0.05``, so the task fails.
     """
     cap = round(threshold - GATE_MARGIN, 6)
     flips = []
     for t in state.twins:
         a, b = t["pair"]
-        da, db = state.decisions_made.get(a), state.decisions_made.get(b)
+        da = state.decisions_made.get(a, undecided_as)
+        db = state.decisions_made.get(b, undecided_as)
         if da is None or db is None or da == db:
             continue
-        if state.decision_context.get(a, []) != state.decision_context.get(b, []):
+        if twin_context(state, a) != twin_context(state, b):
             continue
         flips.append(f"{a}={da} vs {b}={db}")
     if flips:

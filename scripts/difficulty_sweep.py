@@ -11,7 +11,7 @@ section 7 and 10):
   C3  medium: full read beats the best single source by at least 0.2
   C4  hard: prioritising beats fixed-order by >= 0.05 (paired 95% CI excludes 0),
       prioritising mean in [0.5, 0.85], random passes in under 5% of seeds
-  C17 easy: rubric heuristic passes at least 90% of seeds within 40 steps
+  C17 easy: rubric heuristic passes at least 90% of seeds within easy's budget
 
 Usage (repo root):
 

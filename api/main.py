@@ -169,6 +169,8 @@ async def reset(body: ResetRequest | None = None) -> Observation:
             return _env.reset(body.task_id, body.seed, name_seed=body.name_seed, name_blind=body.name_blind)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
+        except RuntimeError as exc:  # the generator could not build a valid pool
+            raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.post("/step", response_model=StepResponse)

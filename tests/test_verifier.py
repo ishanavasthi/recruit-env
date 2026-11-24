@@ -80,13 +80,21 @@ def test_twin_gate_ignores_information_difference() -> None:
     assert env.grade_report()["gates"][0]["passed"] is True
 
 
-def test_twin_gate_undecided_passes() -> None:
-    env = RecruitmentEnvironment()
-    env.reset("hard", 3)
-    a, b = env.verifier_state().twins[0]["pair"]
+def test_twin_gate_skips_undecided_twin_on_easy() -> None:
+    env, a, b = _twin_env("easy", 3)
     env.step(MakeDecisionAction(candidate_id=a, decision="shortlist"))
     policies.idle_until_done(env, [])
     assert env.grade_report()["gates"][0]["passed"] is True
+
+
+def test_twin_gate_counts_undecided_as_hold_on_hard() -> None:
+    """On hard an undecided twin is not shortlisted, so shortlisting only one is a flip."""
+    env, a, b = _twin_env("hard", 3)
+    env.step(MakeDecisionAction(candidate_id=a, decision="shortlist"))
+    policies.idle_until_done(env, [])
+    report = env.grade_report()
+    assert report["gates"][0]["passed"] is False
+    assert report["score"] <= TASK_REGISTRY["hard"].success_threshold - 0.05 + 1e-9
 
 
 def test_medium_investigated_blocked_when_wrong() -> None:

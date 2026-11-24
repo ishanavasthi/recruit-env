@@ -116,21 +116,30 @@ def _error_detail(r: httpx.Response) -> str:
 # Prompts
 # ---------------------------------------------------------------------------
 
-RUBRIC_GUIDE = """How candidates are judged (the published hiring rubric):
-- Sources: github, leetcode, kaggle, the resume's experience section and its
-  skills section. The education section is never used.
-- technical: the role-weighted mean of the github, leetcode and kaggle
-  sub-scores minus their spread (strength must be corroborated). Kaggle
-  weighs most for ML and data roles, least for frontend/backend.
-- experience: resume years, counted only up to GitHub years_active + 1.5,
-  measured against the job's experience_years.
-- growth: half GitHub activity (streak, contributions), half LeetCode
-  practice volume (problems solved).
-- skills: share of the job's required skills (and, less, nice-to-have
-  skills) listed in the resume's skills section. It multiplies the rest, so
-  a candidate missing the required skills ranks low.
+RUBRIC_GUIDE = """How candidates are judged: the published hiring rubric (env/rubric.py).
+Sources: github, leetcode, kaggle, the resume's experience section and its
+skills section. The education section is never used. h(x, s) = x / (x + s).
+
+Platform sub-scores (each 0..1):
+- leetcode = 0.5*sigmoid((contest_rating - 1500)/200) + 0.25*h(hard, 15) + 0.25*global_rank_percentile/100
+- github   = 0.6*h(ln(1+stars_received), ln(151)) + 0.4*h(repos, 15)
+- kaggle   = 0.5*best_finish_percentile/100 + 0.3*rank_value + 0.2*h(3*gold + 2*silver + bronze, 6)
+  (rank_value: Novice 0, Contributor 0.25, Expert 0.5, Master 0.75, Grandmaster 1)
+Components:
+- technical = (sum of w * sub**-2 over the three platforms) ** -0.5, a
+  weighted power mean that sits below the plain mean when they disagree.
+  Weights (leetcode/github/kaggle):
+  ml_engineer .30/.30/.40, data_scientist .30/.25/.45,
+  backend_dev .40/.35/.25, frontend_dev .35/.40/.25.
+- experience = h(years, job.experience_years), where years = the resume's
+  years_experience, capped at github years_active + 1.5.
+- growth = 0.5*(0.5*h(commit_streak_days, 45) + 0.5*h(contributions_last_year, 300))
+         + 0.5*h(leetcode problems_solved, 150)
+- skill_match = 0.85*(share of the job's required_skills listed in the
+  resume's skills) + 0.15*(share of nice_to_have listed)
 - total = (weight_technical*technical + weight_experience*experience +
-  weight_growth*growth) * skill factor, using the job description's weights.
+  weight_growth*growth) * (0.75 + 0.25*skill_match), with the job's weights.
+An unrevealed source counts as an average candidate's.
 
 The pool is ranked by total: the top `quotas.shortlist` candidates are
 shortlist, the bottom `quotas.reject` are reject, the rest are hold.
