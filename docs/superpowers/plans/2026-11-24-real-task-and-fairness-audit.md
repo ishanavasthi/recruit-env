@@ -221,3 +221,51 @@
   - Run `inference.py` with a real LLM via `server-with-secrets cli-proxy-api` on easy and medium for one seed each.
   - Run a Docker build and a wheel build.
 - [ ] **Step 4: Commit** `docs: 3.0.0 README, changelog and surfaces`.
+
+## Amendments after plan review (override the tasks above)
+
+**Sequencing and test hygiene**
+1. **Sweep and constants after the graders.** The sweep, final constants, `PRIORS` freeze and pinned hashes move to the end of Task 3, once the checks, the gate and the hard grader exist. Task 2 lands working constants only.
+2. **Green after every task.** The full suite passes after every task. `JobDescription.role_type` has a default. `scripts/probe_scoring.py` stops importing `FairnessChecker` in the task that deletes it.
+3. **`tests/test_acceptance.py`.**
+   - Asserts criterion 2 per role and pooled.
+   - Asserts criteria 3, 4 and 17 against the measured values. Where §10.18 relaxes criterion 3 or 4, it asserts the recorded relaxed value.
+
+**Policies (`env/policies.py`)**
+
+4. **Interface.**
+   - Policies return the list of step rewards.
+   - `POLICIES: dict[str, Callable[[env], list[float]]]` holds bound policies.
+   - `action_for(cid, source)` is the inverse of `rubric.source_of`.
+5. **`fill_quotas` ties.** A tied block shares one label, the label of the block's best-ranked position, so quotas are soft. Non-tied candidates order by estimate, then id.
+6. **Bayes ceiling without lifting the budget.** The ceiling test grades `fill_quotas(rubric.score)` decisions directly through the grader on a copied state.
+7. **`lsq` models.** `fit_single_source(source, role, seeds)` returns coefficients, cached per process. Tests and scripts fit on seeds 1000–1199.
+
+**Rubric, grader and generator**
+
+8. **`PRIORS`.** Stay sub-score-level: they are role means of each sub-score over generated candidates. An unrevealed GitHub source means no years-active cap. A test checks `PRIORS` against empirical means within 0.02.
+9. **Invariant test.** Uses `pytest.approx(abs=1e-6)`, because `_grade_locked` rounds.
+10. **Conflicts.** The test recomputes the predicate over every candidate and asserts the recorded set equals it.
+11. **Convergence.**
+    - `GeneratedEpisode.attempts` is exposed.
+    - Target attempts: mean ≤5 and max <100 over 1,000 seeds.
+    - The margin is checked on raw arrays before any pydantic model is built.
+    - The signal pool is cached per `(task, seed)`, so a `name_seed` replay only redraws names.
+
+**Fairness**
+
+12. **Fairness tests.**
+    - The done-when is asserted on the committed `docs/results/fairness.json`.
+    - A smoke run uses 40 seeds × 2 name seeds.
+    - The planted tests use exactly 200 seeds × 2 name seeds.
+    - Added tests: twins exist in name-blind episodes; twin labels and contrast rotation follow 50/35/15 and three contrasts (chi-square-free tolerance check over 1,000 seeds); clean policies never fail the gate; the mild planted policy is reported.
+13. **Report.** Adds the per-axis flip rate, intersectional cells with a minimum size of 30 decisions, and the task score next to every row.
+
+**Seed counts**
+
+14. Seed counts by test:
+    - Convergence: 1,000 seeds, once, through a session fixture.
+    - Other generator tests: 100.
+    - Contract and Bayes ceiling: 200.
+    - Invariant: 30.
+    - Bootstrap in tests: n=200.
