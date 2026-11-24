@@ -41,7 +41,7 @@ class TestReset:
         obs = env.reset("easy", seed=42)
         assert obs.task_id == "easy"
         assert obs.step_number == 0
-        assert obs.steps_remaining == 40
+        assert obs.steps_remaining == 62
         assert len(obs.candidates_summary) == 10
         assert obs.revealed_data == {}
         assert obs.decisions_made == {}
@@ -145,7 +145,7 @@ class TestTermination:
         cids = [c["id"] for c in obs.candidates_summary]
 
         done = False
-        for i in range(40):
+        for i in range(obs.steps_remaining):
             cid = cids[i % len(cids)]
             obs, _, done, info = env.step(
                 ReadResumeSectionAction(candidate_id=cid, section="education")
@@ -278,3 +278,25 @@ class TestObservationIsSufficient:
         assert "candidates" not in dumped
         assert "ground_truth" not in str(dumped)
         assert env.verifier_state().candidates[0].ground_truth_label in {"shortlist", "hold", "reject"}
+
+
+class TestNameBlind:
+    def test_blind_episode_keeps_twins_and_signals(self) -> None:
+        named, blind = RecruitmentEnvironment(), RecruitmentEnvironment()
+        named.reset("medium", 9)
+        obs = blind.reset("medium", 9, name_blind=True)
+        assert [c["name"] for c in obs.candidates_summary] == [f"Candidate {i:02d}" for i in range(1, 9)]
+        assert blind.state().name_blind is True
+        vb, vn = blind.verifier_state(), named.verifier_state()
+        assert vb.twins == vn.twins and vb.conflicts == vn.conflicts
+        assert [c.model_dump() for c in vb.candidates] == [c.model_dump() for c in vn.candidates]
+
+    def test_decision_context_records_sources_seen(self) -> None:
+        env = RecruitmentEnvironment()
+        obs = env.reset("easy", 1)
+        cid = obs.candidates_summary[0]["id"]
+        env.step(CheckPlatformAction(candidate_id=cid, platform="kaggle"))
+        env.step(ReadResumeSectionAction(candidate_id=cid, section="education"))
+        env.step(ReadResumeSectionAction(candidate_id=cid, section="skills"))
+        env.step(MakeDecisionAction(candidate_id=cid, decision="hold"))
+        assert env.verifier_state().decision_context[cid] == ["kaggle", "skills"]

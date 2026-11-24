@@ -116,19 +116,50 @@ def _error_detail(r: httpx.Response) -> str:
 # Prompts
 # ---------------------------------------------------------------------------
 
+RUBRIC_GUIDE = """How candidates are judged: the published hiring rubric (env/rubric.py).
+Sources: github, leetcode, kaggle, the resume's experience section and its
+skills section. The education section is never used. h(x, s) = x / (x + s).
+
+Platform sub-scores (each 0..1):
+- leetcode = 0.5*sigmoid((contest_rating - 1500)/200) + 0.25*h(hard, 15) + 0.25*global_rank_percentile/100
+- github   = 0.6*h(ln(1+stars_received), ln(151)) + 0.4*h(repos, 15)
+- kaggle   = 0.5*best_finish_percentile/100 + 0.3*rank_value + 0.2*h(3*gold + 2*silver + bronze, 6)
+  (rank_value: Novice 0, Contributor 0.25, Expert 0.5, Master 0.75, Grandmaster 1)
+Components:
+- technical = (sum of w * sub**-2 over the three platforms) ** -0.5, a
+  weighted power mean that sits below the plain mean when they disagree.
+  Weights (leetcode/github/kaggle):
+  ml_engineer .30/.30/.40, data_scientist .30/.25/.45,
+  backend_dev .40/.35/.25, frontend_dev .35/.40/.25.
+- experience = h(years, job.experience_years), where years = the resume's
+  years_experience, capped at github years_active + 1.5.
+- growth = 0.5*(0.5*h(commit_streak_days, 45) + 0.5*h(contributions_last_year, 300))
+         + 0.5*h(leetcode problems_solved, 150)
+- skill_match = 0.85*(share of the job's required_skills listed in the
+  resume's skills) + 0.15*(share of nice_to_have listed)
+- total = (weight_technical*technical + weight_experience*experience +
+  weight_growth*growth) * (0.75 + 0.25*skill_match), with the job's weights.
+An unrevealed source counts as an average candidate's.
+
+The pool is ranked by total: the top `quotas.shortlist` candidates are
+shortlist, the bottom `quotas.reject` are reject, the rest are hold.
+Identical candidates must get identical decisions. Names carry no
+information about ability."""
+
 SYSTEM_PROMPT = """You are a hiring agent screening candidates for one job.
-Each step you take ONE action. Gathering information costs a step, and the
+Each step you take ONE action. Revealing a source costs a step, and the
 episode ends when every candidate has a decision or the step budget runs out.
-An undecided candidate earns no credit, so leave enough steps to decide everyone.
 
 Actions (respond with ONE JSON object only, no explanation, no markdown):
 1. {"type": "check_platform", "candidate_id": "...", "platform": "github|leetcode|kaggle"}
 2. {"type": "read_resume_section", "candidate_id": "...", "section": "education|experience|skills"}
 3. {"type": "make_decision", "candidate_id": "...", "decision": "shortlist|hold|reject"}
 
-Decisions are final. Shortlist only the strongest candidates for the role,
-reject clearly weak ones, and hold the rest. Base each decision on the data
-you have revealed."""
+""" + RUBRIC_GUIDE + """
+
+Decide each candidate by the rubric. Decisions are final. Candidates you
+never decide earn no credit, except on the hard task where an undecided
+candidate simply counts as not shortlisted."""
 
 
 def build_user_prompt(step: int, observation: dict, history: list[str]) -> str:
@@ -142,6 +173,7 @@ def build_user_prompt(step: int, observation: dict, history: list[str]) -> str:
         f"Step {step}. Steps remaining: {observation.get('steps_remaining', 0)}. "
         f"Undecided candidates: {len(undecided)}.\n"
         f"Job: {json.dumps(jd, separators=(',', ':'))}\n"
+        f"Quotas: {json.dumps(observation.get('quotas', {}))}\n"
         f"Candidates: {json.dumps(observation.get('candidates_summary', []), separators=(',', ':'))}\n"
         f"Revealed data: {json.dumps(observation.get('revealed_data', {}), separators=(',', ':'))}\n"
         f"Decisions made: {json.dumps(observation.get('decisions_made', {}))}\n"
