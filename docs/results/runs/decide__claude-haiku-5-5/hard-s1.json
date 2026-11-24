@@ -1,0 +1,17 @@
+{
+ "task": "hard",
+ "seed": 1,
+ "incomplete": false,
+ "score": 0.727273,
+ "success": true,
+ "usage": {
+  "calls": 1,
+  "prompt_tokens": 6020,
+  "completion_tokens": 9247,
+  "api_errors": 0,
+  "parse_failures": 0,
+  "length_cutoffs": 0,
+  "rejections": 0,
+  "seconds": 33.5
+ }
+}

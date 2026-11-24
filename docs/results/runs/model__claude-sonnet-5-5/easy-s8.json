@@ -1,0 +1,20 @@
+{
+ "task": "easy",
+ "seed": 8,
+ "name_seed": 0,
+ "name_blind": false,
+ "incomplete": false,
+ "score": 0.876923,
+ "success": true,
+ "steps": 57,
+ "usage": {
+  "calls": 57,
+  "prompt_tokens": 233363,
+  "completion_tokens": 66888,
+  "api_errors": 0,
+  "parse_failures": 0,
+  "length_cutoffs": 0,
+  "rejections": 0,
+  "seconds": 752.8
+ }
+}

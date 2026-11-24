@@ -308,7 +308,28 @@ python scripts/baselines_report.py outputs/bench docs/results/runs --common-seed
 
 See [docs/results/baselines.md](docs/results/baselines.md) for the full table with intervals, seed counts, incomplete episodes and model settings.
 
-BASELINE_TABLE_PLACEHOLDER
+Mean score and pass rate on seeds 0–9 of each task: the same 10 seeds for every agent.
+
+| Agent | easy | medium | hard |
+|---|---|---|---|
+| Oracle (ground truth) | 0.999 · 100% | 0.999 · 100% | 0.999 · 100% |
+| Rubric heuristic (rule-based) | 0.999 · 100% | 0.999 · 100% | 0.600 · 40% |
+| Fixed order | 0.999 · 100% | 0.999 · 100% | 0.628 · 40% |
+| Random | 0.340 · 10% | 0.256 · 0% | 0.220 · 0% |
+| Claude Haiku 5.5, step by step | 0.898 · 80% | 0.838 · 70% | 0.520 · 30% |
+| Claude Sonnet 5.5, step by step | 0.853 · 70% | 0.781 · 60% | 0.460 · 0% |
+| Claude Haiku 5.5, decide-only | 0.999 · 100% | 0.965 · 90% | 0.493 · 30% |
+| Claude Sonnet 5.5, decide-only | 0.999 · 100% | 0.999 · 100% | 0.480 · 20% |
+
+Over all 200 seeds, the rubric heuristic scores 0.732 on hard (66% pass) and fixed order 0.530.
+
+What this shows, with only 10 seeds per cell:
+- **Applying the rubric is not the hard part.** Decide-only, where Python gathers the evidence, scores near the maximum on easy and medium.
+- **Playing step by step costs points.** Choosing what to read and tracking about 50 steps of evidence, both models fall below the rule-based heuristic on every task.
+- **On hard, no agent shown here prioritises well.** Every agent scores well below the oracle.
+- **Haiku against Sonnet.** Haiku's step-by-step scores are higher, but every interval overlaps, so this run cannot rank the two models.
+
+Every model episode completed, with no cut-off replies and no API errors, and every episode's log is committed under `docs/results/runs/`. The 120 model episodes used about 17M tokens. Each step-by-step episode used 190k–440k tokens and took 4–13 minutes.
 
 ---
 
