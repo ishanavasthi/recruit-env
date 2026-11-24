@@ -273,6 +273,7 @@ class ProfileFactory:
 
         return JobDescription(
             role=meta["role"],
+            role_type=role_type,
             required_skills=required,
             nice_to_have=list(nice),
             experience_years=meta["experience_years"],

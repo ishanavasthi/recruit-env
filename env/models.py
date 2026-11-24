@@ -33,6 +33,9 @@ class GitHubStats(BaseModel):
     contributions_last_year: int = Field(
         default=0, description="Total contributions in the last 365 days"
     )
+    years_active: float = Field(
+        default=0.0, ge=0.0, description="Years since the account's first public contribution"
+    )
 
 
 class LeetCodeStats(BaseModel):
@@ -84,6 +87,10 @@ class ResumeSection(BaseModel):
         ge=0.0,
         description="Relevant years of experience conveyed by this section",
     )
+    skills: list[str] = Field(
+        default_factory=list,
+        description="Structured skills list (the 'skills' section only)",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +115,13 @@ class CandidateProfile(BaseModel):
     )
     ground_truth_scores: dict[str, float] = Field(
         default_factory=dict,
-        description="Ground-truth dimension scores, e.g. {'technical': 0.8, 'experience': 0.6}",
+        description="Rubric components and total, e.g. {'technical': 0.8, ..., 'total': 0.5}",
+    )
+    origin: str | None = Field(
+        default=None, description="Name-origin group of the displayed name (verifier only)"
+    )
+    gender: str | None = Field(
+        default=None, description="Perceived gender of the displayed name (verifier only)"
     )
 
 
@@ -121,6 +134,10 @@ class JobDescription(BaseModel):
     """Synthetic job description generated per episode."""
 
     role: str = Field(description="Job title / role name")
+    role_type: str = Field(
+        default="backend_dev",
+        description="Role key: ml_engineer, frontend_dev, backend_dev or data_scientist",
+    )
     required_skills: list[str] = Field(
         default_factory=list, description="Skills the candidate must have"
     )
