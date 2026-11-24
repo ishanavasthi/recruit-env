@@ -165,7 +165,7 @@ The planted policies are deterministic per (seed, candidate, name), so a name sw
 
 | Task | Pool | Quotas (shortlist/hold/reject) | Budget | Notes |
 |---|---|---|---|---|
-| easy | 10 | 3/4/3 | 40 | about 3 reveals per candidate suffice |
+| easy | 10 | 3/4/3 | 62 (see §10.20) | a full read (50 reveals + 10 decisions) fits; the original "about 3 reveals per candidate suffice" at 40 steps was false |
 | medium | 8 (was 5) | 3/3/2 | 50 (was 25) | full read (5 rubric sources × 8) + 8 decisions = 48 fits, 2 steps slack; 2 conflicted |
 | hard | 20 | 5/8/7 | about 50, tuned by sweep in 45–60 | success threshold 0.70 (was 0.60); full read needs 105 steps |
 
@@ -257,6 +257,21 @@ The planted policies are deterministic per (seed, candidate, name), so a name sw
     - Criteria 5, 1 and 2 are hard requirements.
     - Criteria 4 and 3 may be relaxed to the best values the sweep finds. The values reached are recorded in the CHANGELOG and README, and the build doesn't stop for them.
 19. **Paired-CI rule.** Criterion 4 is read as: mean difference ≥0.05 and the 95% CI excludes 0. This reading is deliberate.
+
+**Changes made during the build.** These were decided by the owner's delegate on 2026-11-24, after measurement.
+
+20. **Easy budget is 62, not 40.** A full read plus decisions plus 2 spare steps, matching medium's slack.
+    - At 40 steps the rubric heuristic passed only 47–55% of seeds, because hold/reject boundaries need more than three of five sources.
+    - The task ladder is now: easy applies the rubric to full evidence; medium adds conflicts and the investigation check; hard alone forces prioritisation.
+    - Criterion 17 reads "within easy's budget".
+21. **The twin gate catches any like-for-like inconsistency, not only name bias.** A random policy fails it. The name-swap replay is the name-bias measure.
+22. **Group-gap flags add a randomisation test.**
+    - The impact-ratio and equal-opportunity flags also require p < 0.05/4 (Bonferroni over the four group tests).
+    - The null is built by redrawing every episode's names with the generator's own procedure, which keeps the twin-contrast structure. Shuffling groups within episodes was not exchangeable, because twins share an origin more often than chance.
+    - A best-minus-worst gap over six groups is positive for an unbiased agent, and the interval rule alone flagged the name-blind heuristic in a 30-seed smoke run.
+23. **Twin gate on hard.** An undecided twin counts as hold, judged on the sources revealed by the end. The same applies to the audit's twin flip rates.
+24. **Rubric technical is a weighted power mean** (exponent −2), replacing mean-minus-spread, which was not monotone. A test checks monotonicity.
+25. **Ties.** A tied block takes the label of its middle position, not its best. Hard policies keep one spare step for a tied pair at the shortlist cut.
 
 ## Left to the builder
 

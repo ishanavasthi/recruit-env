@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Wording:** never write "hackathon", "Meta", "submission" or "judges", in code, docs or commits.
+- **Wording:** no event or competition wording anywhere (the project's wording rule), in code, docs or commits.
 - **Reward:** sparse. Terminal `step_reward` = grader score = `episode_score` = `/grader` score.
 - **Hidden verifier:** no ground truth, origin/gender, conflicts or twins in `Observation`, `PublicState`, any GET route or `/step`.
 - **Determinism:** same `(task, seed, name_seed, name_blind)` gives an identical episode. Names come from their own RNG stream.
