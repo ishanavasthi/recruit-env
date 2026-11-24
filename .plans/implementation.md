@@ -24,7 +24,7 @@
   - `tasks/`.
 - **OpenEnv (the `openenv` extra):**
   - `openenv_adapter.py` and `client.py`;
-  - `server/app.py`, which the Space runs: one environment per `/ws` session, the Task API, `/tasks` and `/baseline`.
+  - `recruitenv/server.py`, which the Space runs: one environment per `/ws` session, the Task API, `/tasks` and `/baseline`.
 - **Agents:**
   - `inference.py`, step by step;
   - `baseline/run_baseline.py`, decide-only.

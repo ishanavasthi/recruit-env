@@ -1,6 +1,11 @@
 # RecruitEnv — Study Guides
 
-> **Version note.** These guides describe v1.0.0 (git tag `v1.0.0`). Version 2.0.0 changed the scoring: the reward is now sparse and equals the task grader's score, `score_dimension` is gone, `GET /state` no longer returns ground truth, observations carry revealed values, and fairness is out of the score until it is rebuilt. See [`CHANGELOG.md`](../CHANGELOG.md) and the [roadmap](../docs/research/2026-11-21-findings-and-roadmap.md).
+> **Version note.** These guides describe v1.0.0 (git tag `v1.0.0`) and are kept as a record of that design. The project has changed a great deal since:
+> - **2.0.0:** one honest score.
+> - **3.0.0:** a published rubric, latent generator, conflicts and a counterfactual fairness audit.
+> - **4.0.0:** a standalone `recruitenv` package, an OpenEnv server, transition logs and agents with no fallbacks.
+>
+> Paths such as `env/`, `tasks/` and `api/main.py` are now `recruitenv/`, `recruitenv/tasks/` and `recruitenv/server.py`. For the current design, read the [README](../README.md), the [CHANGELOG](../CHANGELOG.md), the [build log](../.plans/implementation.md) and the [roadmap](../docs/research/2026-11-21-findings-and-roadmap.md).
 
 Comprehensive study material covering every major file and concept in this project. Read in order; each file builds on the previous one.
 

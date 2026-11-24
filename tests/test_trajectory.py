@@ -101,16 +101,41 @@ def test_replay_detects_changed_grade(tmp_path):
         replay(path)
 
 
-@pytest.mark.parametrize("field", ["generator_version", "package_version"])
-def test_replay_refuses_version_mismatch(tmp_path, field):
+def test_replay_refuses_generator_mismatch(tmp_path):
     path = _run(tmp_path, "oracle", "easy", 2)
 
     def stale(recs):
-        recs[0][field] = "0"
+        recs[0]["generator_version"] = "0"
     _rewrite(path, stale)
-    with pytest.raises(ReplayError, match="version"):
+    with pytest.raises(ReplayError, match="generator version"):
         replay(path)
     replay(path, check_versions=False)
+
+
+def test_package_version_only_named_on_divergence(tmp_path):
+    path = _run(tmp_path, "oracle", "easy", 2)
+
+    def older(recs):
+        recs[0]["package_version"] = "3.9.9"
+    _rewrite(path, older)
+    replay(path)                                  # same behaviour: reproduces
+
+    def older_and_changed(recs):
+        recs[-1]["grade"]["score"] = 0.5
+    _rewrite(path, older_and_changed)
+    with pytest.raises(ReplayError, match="written by recruitenv 3.9.9"):
+        replay(path)
+
+
+def test_committed_logs_replay():
+    from pathlib import Path
+
+    runs = Path(__file__).resolve().parent.parent / "docs" / "results" / "runs"
+    logs = sorted(runs.rglob("*.jsonl")) if runs.exists() else []
+    if not logs:
+        pytest.skip("no committed run logs")
+    for log in logs:
+        replay(log)
 
 
 def test_replay_cli(tmp_path, capsys):

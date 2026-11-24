@@ -49,6 +49,16 @@ def parse_seeds(text: str) -> list[int]:
     return seeds
 
 
+def is_rate_limited(reason: str) -> bool:
+    """Only API failures count; model reply text never does."""
+    import inference
+
+    if not reason.startswith(inference.API_ERROR_PREFIX):
+        return False
+    low = reason.lower()
+    return "429" in low or "rate limit" in low or "ratelimit" in low or "too many requests" in low
+
+
 def safe_name(agent: str) -> str:
     return agent.replace(":", "__").replace("/", "_")
 
@@ -162,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
             t, s = futures[fut]
             if r.get("incomplete"):
                 msg = f"INCOMPLETE ({r.get('reason')})"
-                if "429" in str(r.get("reason")) or "rate" in str(r.get("reason")).lower():
+                if is_rate_limited(str(r.get("reason", ""))):
                     with lock:
                         rate_limited += 1
                         if rate_limited >= args.max_rate_limited and not stop.is_set():

@@ -5,8 +5,8 @@
 
 Each log is replayed against a fresh ``reset`` with its logged parameters:
 every observation hash, reward and the final grade must match. A log written
-by a different generator or package version is refused (``--no-version-check``
-skips that). Exit code 0 means every log reproduced.
+by a different generator version is refused (``--no-version-check`` skips
+that). Exit code 0 means every log reproduced.
 """
 
 from __future__ import annotations

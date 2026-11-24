@@ -22,8 +22,8 @@ agents = ["openai", "python-dotenv"]
 dev = ["pytest", "httpx", "websockets"]
 
 [project.scripts]
-recruitenv-server = "server.app:main"
+recruitenv-server = "recruitenv.server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["recruitenv*", "server*"]
+include = ["recruitenv*"]

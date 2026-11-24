@@ -67,7 +67,7 @@ def test_remote_driver_over_websocket():
 
     import uvicorn
 
-    from server.app import app
+    from recruitenv.server import app
 
     config = uvicorn.Config(app, host="127.0.0.1", port=7893, log_level="warning")
     server = uvicorn.Server(config)
@@ -194,3 +194,27 @@ def test_decide_only_baseline(task, tmp_path):
 def test_decide_only_has_no_fallback():
     r = run_baseline.run_task(FakeLLM(["junk"] * 10), "m", "medium", 42, backoff_s=0)
     assert r["incomplete"] is True and "unusable" in r["reason"]
+
+
+def test_api_errors_have_their_own_budget():
+    action = _first_action()
+    llm = FakeLLM(["error"] * 6 + [action])
+    chooser = inference.ModelChooser(llm, "m", attempts=2, api_attempts=8, backoff_s=0)
+    usage = inference.Usage()
+    d = inference.LocalDriver()
+    assert chooser(d.reset("easy", 1), [], usage) == action
+    assert usage.api_errors == 6 and usage.calls == 1
+
+
+def test_api_outage_ends_incomplete_with_api_reason():
+    chooser = inference.ModelChooser(FakeLLM(["error"] * 20), "m", api_attempts=3, backoff_s=0)
+    result = inference.run_episode(inference.LocalDriver(), chooser, "easy", 1, verbose=False)
+    assert result["incomplete"] and result["reason"].startswith(inference.API_ERROR_PREFIX)
+
+
+def test_rate_limit_detection_ignores_reply_text():
+    from scripts.run_benchmark import is_rate_limited
+
+    assert is_rate_limited("model request failed: Error code: 429 - rate limit exceeded")
+    assert not is_rate_limited("unparseable reply: 'an accurate rate estimate'")
+    assert not is_rate_limited("reply cut off at max_tokens=32000")

@@ -248,7 +248,7 @@ The core needs only `pydantic` and `numpy`.
 
 ```bash
 pip install "recruitenv[openenv] @ git+https://github.com/ishanavasthi/recruit-env"
-uvicorn server.app:app --port 7860          # or: docker build -t recruitenv . && docker run -p 7860:7860 recruitenv
+uvicorn recruitenv.server:app --port 7860          # or: docker build -t recruitenv . && docker run -p 7860:7860 recruitenv
 ```
 
 ```python
@@ -353,8 +353,9 @@ recruit-env/
 │   ├── tools.py               # Tool-per-action environment (TRL environment_factory)
 │   ├── openenv_adapter.py     # OpenEnv Environment, action, observation, state (openenv extra)
 │   ├── client.py              # Typed OpenEnv client (openenv extra)
+│   ├── server.py              # The OpenEnv server; the Space runs it (openenv extra)
 │   └── tasks/                 # Task configs and graders (checks + twin gate)
-├── server/app.py              # The OpenEnv server (the Space runs this)
+├── server/app.py              # Shim: `uvicorn server.app:app` (the server is recruitenv/server.py)
 ├── inference.py               # Step-by-step model agent
 ├── baseline/run_baseline.py   # Decide-only model agent
 ├── examples/train_grpo.py     # GRPO with TRL (uv script, GPU)

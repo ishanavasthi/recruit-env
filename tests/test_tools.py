@@ -40,15 +40,28 @@ def test_tool_episode_matches_core_score():
     assert env.get_reward() >= 0.99
 
 
-def test_illegal_actions_raise_and_reward_waits_for_the_end():
+def test_illegal_actions_raise():
     env = RecruitToolEnv()
     env.reset(task="easy", seed=1)
-    assert env.get_reward() == 0.0
     env.hold("candidate_001")
     with pytest.raises(ValueError, match="already has a decision"):
         env.reject("candidate_001")
     with pytest.raises(ValueError):
         env.check_github("nobody")
+
+
+def test_hard_shortlists_then_stop_is_graded():
+    ref = RecruitmentEnvironment()
+    ref.reset("hard", 4)
+    best = [c.id for c in ref.verifier_state().candidates if c.ground_truth_label == "shortlist"]
+    env = RecruitToolEnv()
+    env.reset(task="hard", seed=4)
+    for cid in best:
+        env.shortlist(cid)
+    assert not env.done                      # hard ends only at the budget
+    assert env.get_reward() >= 0.99          # played out, graded on the shortlists
+    with pytest.raises(ValueError, match="over"):
+        env.hold(best[0])
 
 
 def test_reset_starts_fresh():
@@ -58,4 +71,4 @@ def test_reset_starts_fresh():
         env.hold(f"candidate_{i:03d}")
     assert env.done and env.get_reward() > 0
     env.reset(task="easy", seed=2)
-    assert not env.done and env.get_reward() == 0.0
+    assert not env.done and env.reward == 0.0

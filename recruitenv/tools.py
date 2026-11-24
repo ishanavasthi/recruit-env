@@ -11,7 +11,7 @@ process, so training needs no server. It has no TRL dependency.
     print(env.check_github("candidate_004"))
     env.shortlist("candidate_004")
     ...
-    env.get_reward()   # the grader's score once the episode is over, else 0.0
+    env.get_reward()   # the grader's score (an unfinished episode is played out first)
 
 An illegal action raises ``ValueError`` with the reason; TRL shows the
 message to the model as the tool's response. A rejected action costs no step.
@@ -178,5 +178,18 @@ class RecruitToolEnv:
     # -- reward ----------------------------------------------------------
 
     def get_reward(self) -> float:
-        """The grader's score if the episode ended, else 0.0."""
+        """The grader's score. An unfinished episode is played out first.
+
+        The rollout may stop before the episode ends (for example after the
+        shortlists on hard, where the rest of the budget is not needed). The
+        remaining budget is then spent without deciding anyone, as the core
+        does, and the episode is graded: undecided candidates count as not
+        shortlisted on hard and as wrong elsewhere.
+        """
+        if not self.done and self.env._state is not None:
+            from recruitenv.policies import idle_until_done
+
+            idle_until_done(self.env, [])
+            self.done = True
+            self.reward = self.env.state().episode_score or 0.0
         return self.reward

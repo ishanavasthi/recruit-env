@@ -29,6 +29,8 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from inference import (  # noqa: E402
+    API_ATTEMPTS,
+    API_ERROR_PREFIX,
     MAX_TOKENS,
     MAX_TOKENS_CEILING,
     MODEL_ATTEMPTS,
@@ -120,11 +122,12 @@ def parse_decisions(text: str, ids: list[str]) -> dict[str, str] | None:
 
 def llm_decisions(client: Any, model: str, obs: dict, usage: Usage, *,
                   max_tokens: int = MAX_TOKENS, attempts: int = MODEL_ATTEMPTS,
-                  backoff_s: float = 2.0) -> dict[str, str]:
+                  api_attempts: int = API_ATTEMPTS, backoff_s: float = 2.0) -> dict[str, str]:
     """One request: the model decides every candidate. Raises IncompleteEpisode."""
     ids = [c["id"] for c in obs["candidates_summary"]]
     cap, problem = max_tokens, "no attempt"
-    for attempt in range(attempts):
+    replies = failures = 0
+    while replies < attempts:
         try:
             completion = client.chat.completions.create(
                 model=model, messages=[{"role": "user", "content": decision_prompt(obs)}],
@@ -132,9 +135,12 @@ def llm_decisions(client: Any, model: str, obs: dict, usage: Usage, *,
             )
         except Exception as exc:
             usage.api_errors += 1
-            problem = f"model request failed: {exc}"[:300]
-            time.sleep(backoff_s * (2 ** attempt))
+            failures += 1
+            if failures >= api_attempts:
+                raise IncompleteEpisode(f"{API_ERROR_PREFIX}: {exc}"[:300]) from exc
+            time.sleep(min(60.0, backoff_s * (2 ** (failures - 1))))
             continue
+        replies += 1
         usage.calls += 1
         u = getattr(completion, "usage", None)
         if u is not None:

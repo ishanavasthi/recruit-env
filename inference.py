@@ -50,7 +50,9 @@ BENCHMARK = "recruitenv"
 TEMPERATURE = 0.1
 MAX_TOKENS = 16000          # reasoning models spend thousands of tokens before a decision
 MAX_TOKENS_CEILING = 32000
-MODEL_ATTEMPTS = 4          # per step: API errors, parse failures and cut-off replies
+MODEL_ATTEMPTS = 4          # per step: replies that are unparseable or cut off
+API_ATTEMPTS = 8            # per step: failed requests, with backoff up to a minute (about 4 minutes in all)
+API_ERROR_PREFIX = "model request failed"
 
 _ACTION = TypeAdapter(Action)
 
@@ -202,6 +204,7 @@ class ModelChooser:
     max_tokens: int = MAX_TOKENS
     max_tokens_ceiling: int = MAX_TOKENS_CEILING
     attempts: int = MODEL_ATTEMPTS
+    api_attempts: int = API_ATTEMPTS
     temperature: float = TEMPERATURE
     backoff_s: float = 2.0
     extra: dict[str, Any] = field(default_factory=dict)
@@ -211,7 +214,8 @@ class ModelChooser:
         notes: list[str] = []
         step = observation.get("step_number", 0) + 1
         last_problem = "no attempt"
-        for attempt in range(self.attempts):
+        replies = failures = 0
+        while replies < self.attempts:
             try:
                 completion = self.client.chat.completions.create(
                     model=self.model,
@@ -225,9 +229,12 @@ class ModelChooser:
                 )
             except Exception as exc:  # network or provider error: back off and retry
                 usage.api_errors += 1
-                last_problem = f"model request failed: {exc}"[:300]
-                time.sleep(self.backoff_s * (2 ** attempt))
+                failures += 1
+                if failures >= self.api_attempts:
+                    raise IncompleteEpisode(f"{API_ERROR_PREFIX}: {exc}"[:300]) from exc
+                time.sleep(min(60.0, self.backoff_s * (2 ** (failures - 1))))
                 continue
+            replies += 1
             usage.calls += 1
             u = getattr(completion, "usage", None)
             if u is not None:

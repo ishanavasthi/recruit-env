@@ -174,22 +174,30 @@ def replay(path: str | Path, *, check_versions: bool = True) -> dict[str, Any]:
     """Replay a log against a fresh environment and check it reproduces.
 
     Returns the replayed grade report. Raises ``ReplayError`` on the first
-    difference: versions, any observation hash, reward, done flag, a
-    rejection that no longer happens, or the final grade.
+    difference: any observation hash, reward, done flag, a rejection that no
+    longer happens, or the final grade. A log from another generator version
+    is refused up front (``check_versions=False`` skips that); a log from
+    another package version is replayed, and its version is named if it
+    diverges.
     """
     records = read_log(path)
     if not records or records[0].get("kind") != "header":
         raise ReplayError("log has no header")
     head = records[0]
-    if check_versions:
-        if head["generator_version"] != GENERATOR_VERSION:
-            raise ReplayError(
-                f"generator version {head['generator_version']} in log, {GENERATOR_VERSION} installed"
-            )
-        if head["package_version"] != package_version():
-            raise ReplayError(
-                f"package version {head['package_version']} in log, {package_version()} installed"
-            )
+    if check_versions and head["generator_version"] != GENERATOR_VERSION:
+        raise ReplayError(
+            f"generator version {head['generator_version']} in log, {GENERATOR_VERSION} installed"
+        )
+    note = ""
+    if head.get("package_version") != package_version():
+        note = f" (log written by recruitenv {head.get('package_version')}, replayed with {package_version()})"
+    try:
+        return _replay_records(head, records)
+    except ReplayError as exc:
+        raise ReplayError(f"{exc}{note}") from None
+
+
+def _replay_records(head: dict[str, Any], records: list[dict[str, Any]]) -> dict[str, Any]:
     env = RecruitmentEnvironment()
     obs = env.reset(head["task"], head["seed"], name_seed=head["name_seed"], name_blind=head["name_blind"])
     if "initial_obs_sha256" in head and obs_hash(obs) != head["initial_obs_sha256"]:

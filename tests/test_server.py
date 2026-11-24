@@ -1,4 +1,4 @@
-"""The OpenEnv server (server/app.py): routes, websocket episodes, Task API,
+"""The OpenEnv server (recruitenv/server.py): routes, websocket episodes, Task API,
 fairness controls and the hidden verifier."""
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from recruitenv import __version__  # noqa: E402
 from recruitenv.environment import RecruitmentEnvironment  # noqa: E402
 from recruitenv.names import NAME_TABLE  # noqa: E402
-from server.app import app  # noqa: E402
+from recruitenv.server import app  # noqa: E402
 
 client = TestClient(app)
 

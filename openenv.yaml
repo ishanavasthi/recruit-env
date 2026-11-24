@@ -7,7 +7,7 @@ description: >
   scored by a published rubric, with a counterfactual fairness audit.
 type: space
 runtime: fastapi
-app: server.app:app
+app: recruitenv.server:app
 port: 7860
 space_url: "https://huggingface.co/spaces/heyavasthi/recruitenv"
 

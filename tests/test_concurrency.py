@@ -112,7 +112,7 @@ def test_websocket_sessions_do_not_interfere():
     pytest.importorskip("openenv")
     from fastapi.testclient import TestClient
 
-    from server.app import app
+    from recruitenv.server import app
 
     client = TestClient(app)
     solo = {ns: _solo("medium", 9, ns) for ns in (0, 1)}
