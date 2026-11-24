@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from env import policies
-from env.environment import RecruitmentEnvironment
-from env.models import MakeDecisionAction
-from tasks import GRADER_REGISTRY, TASK_REGISTRY
+from recruitenv import policies
+from recruitenv.environment import RecruitmentEnvironment
+from recruitenv.models import MakeDecisionAction
+from recruitenv.tasks import GRADER_REGISTRY, TASK_REGISTRY
 
 TASKS = ["easy", "medium", "hard"]
 FORMULA_POLICIES = ["oracle", "rubric_heuristic", "fixed_order", "random", "single_skills", "planted_strong"]

@@ -2,8 +2,7 @@ services:
   recruitenv:
     build: .
     ports:
-      - "7860:7860"
+      - "127.0.0.1:7860:7860"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - MAX_CONCURRENT_ENVS=${MAX_CONCURRENT_ENVS:-16}
     restart: unless-stopped

@@ -2,8 +2,8 @@
 
 import pytest
 
-from env.environment import RecruitmentEnvironment
-from env.models import (
+from recruitenv.environment import RecruitmentEnvironment
+from recruitenv.models import (
     CheckPlatformAction,
     MakeDecisionAction,
     ReadResumeSectionAction,

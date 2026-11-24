@@ -1,6 +1,6 @@
 """Scoreboard of the reference policies (read-only).
 
-Plays every reference policy in ``env/policies.py`` on every task and prints
+Plays every reference policy in ``recruitenv/policies.py`` on every task and prints
 the mean score and the share of seeds that pass the task's success
 threshold. The 1.0.0 findings in docs/research/2026-11-21-findings-and-roadmap.md
 came from an earlier version of this script (tag ``v1.0.0``). Acceptance
@@ -18,9 +18,9 @@ import sys
 
 sys.path.insert(0, ".")
 
-from env import policies  # noqa: E402
-from env.environment import RecruitmentEnvironment  # noqa: E402
-from tasks import TASK_REGISTRY  # noqa: E402
+from recruitenv import policies  # noqa: E402
+from recruitenv.environment import RecruitmentEnvironment  # noqa: E402
+from recruitenv.tasks import TASK_REGISTRY  # noqa: E402
 
 ROWS = [
     "oracle", "rubric_heuristic", "fixed_order", "random",

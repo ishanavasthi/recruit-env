@@ -1,0 +1,13 @@
+{
+  "agent": "model:claude-sonnet-5-5",
+  "kind": "model",
+  "model": "claude-sonnet-5-5",
+  "package_version": "4.0.0",
+  "settings": {
+    "temperature": 0.1,
+    "max_tokens": 16000,
+    "max_tokens_ceiling": 32000,
+    "reasoning_effort": "provider default"
+  },
+  "updated_at": "2026-11-24T21:50:42.471318+00:00"
+}

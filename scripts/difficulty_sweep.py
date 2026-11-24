@@ -33,10 +33,10 @@ import numpy as np
 
 sys.path.insert(0, ".")
 
-import env.profile_factory as pf  # noqa: E402
-import tasks  # noqa: E402
-from env import policies, rubric  # noqa: E402
-from env.environment import RecruitmentEnvironment  # noqa: E402
+import recruitenv.profile_factory as pf  # noqa: E402
+from recruitenv import tasks  # noqa: E402
+from recruitenv import policies, rubric  # noqa: E402
+from recruitenv.environment import RecruitmentEnvironment  # noqa: E402
 
 TRAIN0 = 1000
 SINGLE = [f"single_{s}" for s in rubric.SOURCES] + [f"lsq_{s}" for s in rubric.SOURCES]

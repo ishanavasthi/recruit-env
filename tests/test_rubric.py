@@ -6,8 +6,8 @@ import math
 
 import pytest
 
-from env import rubric
-from env.models import (
+from recruitenv import rubric
+from recruitenv.models import (
     CandidateProfile,
     GitHubStats,
     JobDescription,
@@ -15,8 +15,8 @@ from env.models import (
     LeetCodeStats,
     ResumeSection,
 )
-from env.names import GENDERS, NAME_TABLE, ORIGINS, blind_label, group_of
-from env.profile_factory import ProfileFactory
+from recruitenv.names import GENDERS, NAME_TABLE, ORIGINS, blind_label, group_of
+from recruitenv.profile_factory import ProfileFactory
 
 
 def _jd(role: str) -> JobDescription:

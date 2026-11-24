@@ -10,6 +10,23 @@ The roadmap below fixes the environment first, then makes the core a standalone 
 
 This document is the spec for the next phases of work. Each phase gets its own implementation plan when it starts (see [Workflow and skills](#workflow-and-skills)).
 
+## Status
+
+Updated 2026-11-25. The living build log is in [`.plans/`](../../.plans/implementation.md).
+
+| Phase | Status | Shipped in |
+|---|---|---|
+| 0. Hygiene | Done | 2.0.0, PR #13 |
+| 1. One honest score | Done | 2.0.0, PR #13 |
+| 2. Make the task real | Done | 3.0.0, PR #14 ([spec](../superpowers/specs/2026-11-24-real-task-and-fairness-audit-design.md)) |
+| 3. Fairness as an audit | Done | 3.0.0, PR #14 |
+| 4. Standalone core, OpenEnv adapter | Done | 4.0.0, PR C ([spec](../superpowers/specs/2026-11-25-standalone-core-logs-baselines-design.md)) |
+| 5. Show learning | Baseline table done at 10 seeds (the goal is 50+, to extend in PR D); training example done; the reward curve needs a GPU run (the owner chooses Colab or HF Jobs) | 4.0.0, PR C |
+| 6. Public face | Not started | PR D |
+| 7. Extensions | Not started | later |
+
+The Hugging Face Space runs 3.0.0 (redeployed 2026-11-25).
+
 ## How the evidence was produced
 
 - **Tests:** `pytest tests/ -q` in a throwaway Python 3.11 environment: 35 passed.
@@ -280,5 +297,5 @@ Decided by the owner on 2026-11-21:
 
 Still open:
 
-1. **Backward compatibility.** Whether anything consumes the deployed Space's current API is unknown. The roadmap assumes nothing does and protects against being wrong with the `v1.0.0` tag and a major version bump. Checking the Space's request logs before Phase 1 merges would settle it.
+1. **Backward compatibility.** *Settled 2026-11-24: the owner confirmed nothing consumes the v1 API.* Originally: whether anything consumes the deployed Space's current API is unknown. The roadmap assumes nothing does and protects against being wrong with the `v1.0.0` tag and a major version bump. Checking the Space's request logs before Phase 1 merges would settle it.
 2. **Training budget.** Phase 5 needs GPU time off the development server. Is Colab or HF Jobs acceptable?

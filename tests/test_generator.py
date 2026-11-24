@@ -9,17 +9,17 @@ from collections import Counter, defaultdict
 
 import pytest
 
-from env import rubric
-from env.environment import RecruitmentEnvironment
-from env.names import group_of
-from env.profile_factory import (
+from recruitenv import rubric
+from recruitenv.environment import RecruitmentEnvironment
+from recruitenv.names import group_of
+from recruitenv.profile_factory import (
     MARGIN,
     ROLES,
     ProfileFactory,
     conflicted_candidates,
     fill_quotas,
 )
-from tasks import TASK_REGISTRY
+from recruitenv.tasks import TASK_REGISTRY
 
 TASKS = ["easy", "medium", "hard"]
 SEEDS = range(100)

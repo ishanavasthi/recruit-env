@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from env import fairness
+from recruitenv import fairness
 
 REPORT = Path(__file__).resolve().parent.parent / "docs" / "results" / "fairness.json"
 CLEAN = ["oracle", "rubric_heuristic (name-blind)", "rubric_heuristic (named)"]
