@@ -84,7 +84,7 @@ def _fmt(cell: dict[str, Any]) -> str:
     if cell["mean"] is None:
         return f"all {cell['incomplete']} incomplete"
     lo, hi = cell["ci95"]
-    ci = f" [{lo:.2f}, {hi:.2f}]" if lo == lo else ""
+    ci = f" [{lo:.3f}, {hi:.3f}]" if lo == lo else ""
     s = f"{cell['mean']:.3f}{ci} · {cell['pass_rate']:.0%} · n={cell['episodes']}"
     if cell["incomplete"]:
         s += f" ({cell['incomplete']} incomplete; {cell['mean_incomplete_as_zero']:.3f} counting them as 0)"
