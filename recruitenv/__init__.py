@@ -1,5 +1,7 @@
 """RecruitEnv — RL environment for candidate pipeline triage."""
 
+__version__ = "4.0.0"
+
 from recruitenv.environment import RecruitmentEnvironment
 from recruitenv.models import (
     Action,

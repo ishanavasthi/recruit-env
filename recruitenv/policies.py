@@ -88,7 +88,7 @@ def _decide_many(env: RecruitmentEnvironment, labels: dict[str, str], rewards: l
 
 def _revealed(view: Any, cid: str) -> set[str]:
     """Sources revealed for *cid*. *view* is an environment or a state snapshot."""
-    st = view.state() if isinstance(view, RecruitmentEnvironment) else view
+    st = view.state() if callable(getattr(view, "state", None)) else view
     rec = st.revealed_data.get(cid) or {}
     return set(rec.get("platforms", {})) | set(rec.get("resume_sections", {}))
 

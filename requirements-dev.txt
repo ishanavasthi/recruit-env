@@ -1,2 +1,6 @@
 -r requirements.txt
+openai
+python-dotenv
 pytest
+httpx
+websockets

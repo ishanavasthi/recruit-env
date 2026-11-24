@@ -4,28 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "recruitenv"
-version = "3.0.0"
-description = "RL environment and benchmark for candidate pipeline triage"
+version = "4.0.0"
+description = "RL environment and benchmark for candidate pipeline triage, with a counterfactual fairness audit"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi",
-    "uvicorn",
-    "pydantic",
+    "pydantic>=2",
     "numpy",
-    "openai",
-    "python-dotenv",
-    "httpx",
-    "openenv-core>=0.2.0",
 ]
 
-[project.scripts]
-server = "server.app:main"
-
 [project.optional-dependencies]
-dev = ["pytest", "httpx"]
+# OpenEnv server and typed client (the Space runs this)
+openenv = ["openenv>=0.14,<0.15", "uvicorn"]
+# Model-backed agents: inference.py, baseline/run_baseline.py, scripts/run_benchmark.py
+agents = ["openai", "python-dotenv"]
+dev = ["pytest", "httpx", "websockets"]
+
+[project.scripts]
+recruitenv-server = "server.app:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["recruitenv*", "api*", "baseline*", "server*"]
+include = ["recruitenv*", "server*", "baseline*"]

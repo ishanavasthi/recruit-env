@@ -1,8 +1,4 @@
-fastapi
+openenv>=0.14,<0.15
 uvicorn
-pydantic
+pydantic>=2
 numpy
-openai
-httpx
-python-dotenv
-openenv-core
