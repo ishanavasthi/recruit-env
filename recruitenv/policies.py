@@ -20,16 +20,16 @@ from typing import Any
 
 import numpy as np
 
-from env import rubric
-from env.environment import RecruitmentEnvironment
-from env.models import (
+from recruitenv import rubric
+from recruitenv.environment import RecruitmentEnvironment
+from recruitenv.models import (
     CheckPlatformAction,
     JobDescription,
     MakeDecisionAction,
     ReadResumeSectionAction,
 )
-from env.names import group_of
-from env.profile_factory import ROLES, fill_quotas
+from recruitenv.names import group_of
+from recruitenv.profile_factory import ROLES, fill_quotas
 
 Policy = Callable[[RecruitmentEnvironment], list[float]]
 
@@ -251,7 +251,7 @@ def _features(source: str, rec: dict[str, Any] | None, jd: JobDescription) -> li
 @functools.lru_cache(maxsize=None)
 def fit_single_source(source: str, role: str) -> tuple[float, ...]:
     """Least-squares fit from one source's fields to the rubric total (training seeds)."""
-    from env.profile_factory import ProfileFactory
+    from recruitenv.profile_factory import ProfileFactory
 
     xs, ys = [], []
     factory = ProfileFactory()

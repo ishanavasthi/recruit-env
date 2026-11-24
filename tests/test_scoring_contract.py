@@ -18,11 +18,11 @@ from collections.abc import Callable
 
 import pytest
 
-from env.environment import RecruitmentEnvironment
-from env.models import CheckPlatformAction, MakeDecisionAction, ReadResumeSectionAction
-from env import policies, rubric
-from env.profile_factory import fill_quotas
-from tasks import GRADER_REGISTRY, TASK_REGISTRY
+from recruitenv.environment import RecruitmentEnvironment
+from recruitenv.models import CheckPlatformAction, MakeDecisionAction, ReadResumeSectionAction
+from recruitenv import policies, rubric
+from recruitenv.profile_factory import fill_quotas
+from recruitenv.tasks import GRADER_REGISTRY, TASK_REGISTRY
 
 SEEDS = range(200)
 TASKS = ["easy", "medium", "hard"]

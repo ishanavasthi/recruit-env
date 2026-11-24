@@ -13,9 +13,9 @@ import pytest
 
 import inference
 from api.main import app
-from env import rubric
-from env.models import JobDescription
-from env.profile_factory import fill_quotas
+from recruitenv import rubric
+from recruitenv.models import JobDescription
+from recruitenv.profile_factory import fill_quotas
 
 
 def _scripted_chooser():

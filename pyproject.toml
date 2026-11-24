@@ -28,4 +28,4 @@ dev = ["pytest", "httpx"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["env*", "api*", "tasks*", "baseline*", "server*"]
+include = ["recruitenv*", "api*", "baseline*", "server*"]

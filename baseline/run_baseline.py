@@ -6,7 +6,7 @@ candidate's first source, then every candidate's second, ...) while keeping
 enough budget for the decisions. It then sends the job description, the
 quotas, the published rubric and everything revealed to the model in ONE
 request and asks for a decision per candidate. If the model's answer is
-unusable, the rubric itself decides (``env.rubric.estimate`` + quotas).
+unusable, the rubric itself decides (``recruitenv.rubric.estimate`` + quotas).
 
 Requires OPENAI_API_KEY (and OPENAI_BASE_URL for an OpenAI-compatible
 endpoint). The RecruitEnv server must be running.
@@ -30,10 +30,10 @@ from openai import OpenAI
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from env import rubric  # noqa: E402
-from env.models import JobDescription  # noqa: E402
-from env.policies import SOURCE_PRIORITY  # noqa: E402
-from env.profile_factory import fill_quotas  # noqa: E402
+from recruitenv import rubric  # noqa: E402
+from recruitenv.models import JobDescription  # noqa: E402
+from recruitenv.policies import SOURCE_PRIORITY  # noqa: E402
+from recruitenv.profile_factory import fill_quotas  # noqa: E402
 from inference import RUBRIC_GUIDE  # noqa: E402
 
 load_dotenv()

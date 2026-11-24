@@ -33,8 +33,8 @@ from typing import Any
 import numpy as np
 from numpy.random import Generator
 
-from env import rubric
-from env.models import (
+from recruitenv import rubric
+from recruitenv.models import (
     CandidateProfile,
     GitHubStats,
     JobDescription,
@@ -42,7 +42,7 @@ from env.models import (
     LeetCodeStats,
     ResumeSection,
 )
-from env.names import GENDERS, NAME_TABLE, ORIGINS, blind_label
+from recruitenv.names import GENDERS, NAME_TABLE, ORIGINS, blind_label
 
 GENERATOR_VERSION = "3"
 

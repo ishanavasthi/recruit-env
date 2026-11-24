@@ -143,7 +143,7 @@ class TestFullEpisode:
     def test_full_easy_episode(self) -> None:
         """Run a complete easy episode through the API and verify grading."""
         # Ground truth comes from the verifier side, never from the API
-        from env.environment import RecruitmentEnvironment
+        from recruitenv.environment import RecruitmentEnvironment
 
         ref = RecruitmentEnvironment()
         ref.reset("easy", 42)
@@ -292,7 +292,7 @@ class TestFairnessControls:
     def test_name_blind_hides_names(self) -> None:
         import re
 
-        from env.names import NAME_TABLE
+        from recruitenv.names import NAME_TABLE
 
         obs = client.post("/reset", json={"task_id": "hard", "seed": 11, "name_blind": True}).json()
         cid = obs["candidates_summary"][0]["id"]

@@ -1,4 +1,4 @@
-# Re-export models from env.models for openenv compatibility
-from env.models import Action, EpisodeState, Observation, PublicState, Reward
+# Re-export models from recruitenv.models for openenv compatibility
+from recruitenv.models import Action, EpisodeState, Observation, PublicState, Reward
 
 __all__ = ["Action", "EpisodeState", "Observation", "PublicState", "Reward"]

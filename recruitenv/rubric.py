@@ -64,7 +64,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
-from env.models import CandidateProfile, JobDescription
+from recruitenv.models import CandidateProfile, JobDescription
 
 SOURCES: tuple[str, ...] = ("github", "leetcode", "kaggle", "experience", "skills")
 PLATFORMS: tuple[str, ...] = ("github", "leetcode", "kaggle")

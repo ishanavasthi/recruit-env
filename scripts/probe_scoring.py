@@ -18,9 +18,9 @@ import sys
 
 sys.path.insert(0, ".")
 
-from env import policies  # noqa: E402
-from env.environment import RecruitmentEnvironment  # noqa: E402
-from tasks import TASK_REGISTRY  # noqa: E402
+from recruitenv import policies  # noqa: E402
+from recruitenv.environment import RecruitmentEnvironment  # noqa: E402
+from recruitenv.tasks import TASK_REGISTRY  # noqa: E402
 
 ROWS = [
     "oracle", "rubric_heuristic", "fixed_order", "random",

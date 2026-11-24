@@ -7,8 +7,8 @@ steps: easy tests applying the rubric to full evidence.
 
 from __future__ import annotations
 
-from env.models import EpisodeState, Observation
-from tasks.base import BaseGrader, GradeResult, TaskConfig, finalize, make_check, twin_gate
+from recruitenv.models import EpisodeState, Observation
+from recruitenv.tasks.base import BaseGrader, GradeResult, TaskConfig, finalize, make_check, twin_gate
 
 EASY_CONFIG = TaskConfig(
     id="easy",

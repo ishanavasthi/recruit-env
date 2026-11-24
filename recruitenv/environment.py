@@ -6,7 +6,7 @@ import copy
 import threading
 from typing import Any
 
-from env.models import (
+from recruitenv.models import (
     Action,
     CandidateProfile,
     CheckPlatformAction,
@@ -17,13 +17,13 @@ from env.models import (
     ReadResumeSectionAction,
     Reward,
 )
-from env import rubric
-from env.profile_factory import GENERATOR_VERSION, ProfileFactory, display_names
+from recruitenv import rubric
+from recruitenv.profile_factory import GENERATOR_VERSION, ProfileFactory, display_names
 
 
 def _load_registries() -> tuple[dict, dict]:
     """Lazy import to break the env ↔ tasks circular dependency."""
-    from tasks import GRADER_REGISTRY, TASK_REGISTRY
+    from recruitenv.tasks import GRADER_REGISTRY, TASK_REGISTRY
     return dict(TASK_REGISTRY), dict(GRADER_REGISTRY)
 
 

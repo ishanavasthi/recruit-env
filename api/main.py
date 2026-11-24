@@ -20,9 +20,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, TypeAdapter
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from env import policies
-from env.environment import RecruitmentEnvironment
-from env.models import (
+from recruitenv import policies
+from recruitenv.environment import RecruitmentEnvironment
+from recruitenv.models import (
     Action,
     CheckPlatformAction,
     MakeDecisionAction,
@@ -30,7 +30,7 @@ from env.models import (
     PublicState,
     Reward,
 )
-from tasks import TASK_REGISTRY
+from recruitenv.tasks import TASK_REGISTRY
 
 logger = logging.getLogger("recruitenv.api")
 
@@ -266,7 +266,7 @@ async def _run_rule_baseline(task_id: str, seed: int = 42) -> float:
 
     The heuristic screens every candidate with one source, spends the rest of
     the budget on the candidates nearest a quota cut, and decides by the
-    published rubric (``env.policies.rubric_heuristic``). It never reads names.
+    published rubric (``recruitenv.policies.rubric_heuristic``). It never reads names.
     """
     env = RecruitmentEnvironment()
     env.reset(task_id, seed)

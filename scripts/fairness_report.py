@@ -2,7 +2,7 @@
 
 Plays each audited policy on every task over many seeds, replays each seed
 with redrawn names (``name_seed``), and writes the metrics from
-``env.fairness`` with 95% cluster-bootstrap intervals.
+``recruitenv.fairness`` with 95% cluster-bootstrap intervals.
 
     python scripts/fairness_report.py --seeds 400 --name-seeds 3 --out docs/results
 
@@ -31,7 +31,7 @@ from typing import Any
 
 sys.path.insert(0, ".")
 
-from env import fairness  # noqa: E402
+from recruitenv import fairness  # noqa: E402
 
 TASKS = ("easy", "medium", "hard")
 TARGET_ORIGIN = "african"

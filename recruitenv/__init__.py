@@ -1,7 +1,7 @@
 """RecruitEnv — RL environment for candidate pipeline triage."""
 
-from env.environment import RecruitmentEnvironment
-from env.models import (
+from recruitenv.environment import RecruitmentEnvironment
+from recruitenv.models import (
     Action,
     CandidateProfile,
     CheckPlatformAction,
@@ -17,7 +17,7 @@ from env.models import (
     ResumeSection,
     Reward,
 )
-from env.profile_factory import ProfileFactory
+from recruitenv.profile_factory import ProfileFactory
 
 __all__ = [
     "RecruitmentEnvironment",

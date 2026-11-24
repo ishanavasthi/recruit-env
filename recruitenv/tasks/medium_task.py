@@ -8,8 +8,8 @@ all five rubric sources for everyone plus every decision.
 
 from __future__ import annotations
 
-from env.models import EpisodeState, Observation
-from tasks.base import BaseGrader, GradeResult, TaskConfig, finalize, make_check, twin_gate
+from recruitenv.models import EpisodeState, Observation
+from recruitenv.tasks.base import BaseGrader, GradeResult, TaskConfig, finalize, make_check, twin_gate
 
 MEDIUM_CONFIG = TaskConfig(
     id="medium",

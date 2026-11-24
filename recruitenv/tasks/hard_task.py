@@ -8,8 +8,8 @@ candidates to investigate.
 
 from __future__ import annotations
 
-from env.models import EpisodeState, Observation
-from tasks.base import BaseGrader, GradeResult, TaskConfig, finalize, make_check, twin_gate
+from recruitenv.models import EpisodeState, Observation
+from recruitenv.tasks.base import BaseGrader, GradeResult, TaskConfig, finalize, make_check, twin_gate
 
 HARD_CONFIG = TaskConfig(
     id="hard",

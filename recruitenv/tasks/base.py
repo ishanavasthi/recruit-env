@@ -8,7 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from env.models import EpisodeState, Observation
+from recruitenv.models import EpisodeState, Observation
 
 SCORE_MIN = 0.001
 SCORE_MAX = 0.999
@@ -88,7 +88,7 @@ def twin_context(state: EpisodeState, cid: str) -> list[str]:
     """Sources revealed for *cid* when it was decided, or by the end if undecided."""
     if cid in state.decision_context:
         return state.decision_context[cid]
-    from env.environment import revealed_sources
+    from recruitenv.environment import revealed_sources
 
     return revealed_sources(state.revealed_data.get(cid))
 

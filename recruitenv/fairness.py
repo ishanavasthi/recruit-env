@@ -32,7 +32,7 @@ with ``flip_rate_by_axis(...)["same_group"]`` before reading it as bias.
 Intervals come from a cluster bootstrap that resamples whole episodes
 (all name-swap replays of one task and seed together).
 
-Groups describe how a displayed name may be read (``env.names``), not who a
+Groups describe how a displayed name may be read (``recruitenv.names``), not who a
 candidate is.
 """
 
@@ -89,8 +89,8 @@ class EpisodeRecord:
 
 def collect(policy: str, task: str, seed: int, name_seed: int = 0, name_blind: bool = False) -> EpisodeRecord:
     """Play one episode with a reference policy and record it."""
-    from env import policies
-    from env.environment import RecruitmentEnvironment, revealed_sources
+    from recruitenv import policies
+    from recruitenv.environment import RecruitmentEnvironment, revealed_sources
 
     env = RecruitmentEnvironment()
     env.reset(task, seed, name_seed=name_seed, name_blind=name_blind)
@@ -328,7 +328,7 @@ def _redraw_groups(records: Sequence[EpisodeRecord], rep: int) -> list[EpisodeRe
     keeps its structure, such as twin pairs that must differ in origin,
     gender or both, so the null matches how names are really assigned.
     """
-    from env.profile_factory import draw_names
+    from recruitenv.profile_factory import draw_names
 
     out = []
     for r in records:
@@ -373,7 +373,7 @@ def audit(records: Sequence[EpisodeRecord], boot: int = 1000, seed: int = 0, per
     and a p-value below 0.05 / 4 (Bonferroni over the four group tests:
     impact ratio and equal opportunity, by origin and by gender).
     """
-    from env.names import GENDERS, ORIGINS
+    from recruitenv.names import GENDERS, ORIGINS
 
     groups = {"origin": sorted(ORIGINS), "gender": sorted(GENDERS)}
     _, mat = _cluster_counts(records, groups)

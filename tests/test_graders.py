@@ -3,11 +3,11 @@
 import numpy as np
 import pytest
 
-from env.environment import RecruitmentEnvironment
-from env.models import MakeDecisionAction, ReadResumeSectionAction
-from tasks import GRADER_REGISTRY
-from tasks.easy_task import EasyGrader
-from tasks.hard_task import HardGrader
+from recruitenv.environment import RecruitmentEnvironment
+from recruitenv.models import MakeDecisionAction, ReadResumeSectionAction
+from recruitenv.tasks import GRADER_REGISTRY
+from recruitenv.tasks.easy_task import EasyGrader
+from recruitenv.tasks.hard_task import HardGrader
 
 
 @pytest.fixture()
