@@ -18,7 +18,6 @@ from env.models import (
     Reward,
 )
 from env.profile_factory import ProfileFactory
-from env.fairness import FairnessChecker, fairness_penalty
 
 __all__ = [
     "RecruitmentEnvironment",
@@ -37,6 +36,4 @@ __all__ = [
     "ResumeSection",
     "Reward",
     "ProfileFactory",
-    "FairnessChecker",
-    "fairness_penalty",
 ]
