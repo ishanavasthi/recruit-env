@@ -194,7 +194,7 @@ class TestState:
         assert r.status_code == 200
         body = r.json()
         assert body["task_id"] == "medium"
-        assert len(body["candidates_summary"]) == 5
+        assert len(body["candidates_summary"]) == 8
 
 
 # -----------------------------------------------------------------------

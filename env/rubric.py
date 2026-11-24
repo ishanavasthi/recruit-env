@@ -241,6 +241,17 @@ def reveal_record(profile: CandidateProfile, sources: Iterable[str]) -> dict[str
     return record
 
 
+def reveal_from_record(full: dict[str, Any], sources: Iterable[str]) -> dict[str, Any]:
+    """Restrict a full record to *sources* (same shape as :func:`reveal_record`)."""
+    record: dict[str, Any] = {"resume_sections": {}, "platforms": {}}
+    for src in sources:
+        if src in PLATFORMS and src in full.get("platforms", {}):
+            record["platforms"][src] = full["platforms"][src]
+        elif src in full.get("resume_sections", {}):
+            record["resume_sections"][src] = full["resume_sections"][src]
+    return record
+
+
 def score(profile: CandidateProfile, jd: JobDescription) -> RubricBreakdown:
     """The exact rubric over a full profile (every source revealed)."""
     return estimate(reveal_record(profile, SOURCES), jd)
