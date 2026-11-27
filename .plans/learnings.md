@@ -2,6 +2,22 @@
 
 Newest first.
 
+## 2026-11-27: first reward curve, on a free Kaggle T4
+
+- **What:** GRPO on easy with Qwen2.5-0.5B-Instruct, 168 steps in 10 hours. Training reward rose from 0.06 to 0.33, close to 0.369, the score of shortlisting everyone without reading (every 20-step window below it, 3 single steps above). By the end the model made no accepted reveal calls. A second arm at 3e-6 ran out of GPU memory at step 8.
+- **Why:** roadmap Phase 5 asks for a reward curve from a real run. The owner chose Kaggle because it is free.
+- **Gotchas:**
+  - `torch.cuda.is_bf16_supported()` is True on a T4, which has no native bf16. Check the compute capability instead (8.0+). bf16 was not tried.
+  - TRL counts every turn and tool result against `max_completion_length`, so the budget is for the whole episode.
+  - GPU memory follows the longest episode in a step. Episodes got longer as training went on, so a 5-step smoke test at 10.2 GB did not predict the crash.
+  - The Kaggle CLI 2.2.5 from `uvx` needs `--with six`. Kaggle keeps output files when a notebook fails.
+  - The Kaggle status API sometimes returns a transient "problem on Kaggle's side" error. A watcher must not treat that as the end of the run.
+- **Takeaway:** compute the blind policies' scores before reading a curve. Without the 0.369 line, a rise from 0.06 to 0.33 looks like learning the task. It was learning the format.
+
+## 2026-11-25: 4.0.0 redeployed to the Space
+
+- **What:** the Space `heyavasthi/recruitenv` now runs 4.0.0 (Space commit `f15a1ca`), deployed the same way as 3.0.0. `openenv validate --url` passes against it.
+
 ## 2026-11-25: 4.0.0 — standalone core, OpenEnv adapter, logs, honest model runs (PR C)
 
 - **What:**
@@ -26,7 +42,7 @@ Newest first.
 - **Finding:** applying the rubric is easy for both models. Choosing what to read step by step costs them 0.10–0.22 on easy and medium against the rule-based heuristic.
 - **Gotcha:** `git filter-branch` removed regenerable outputs from history, but its final checkout also deleted them from disk.
 - **Takeaway:** never `git add -A` while a run is writing files into the repo. Ignore output directories first.
-- **Still open:** #12 asks for 50+ seeds. The runner is resumable, so more seeds can be added in PR D.
+- **Still open:** #12 asks for 50+ seeds. The runner is resumable, so more seeds can be added later.
 
 ## 2026-11-25: Space redeployed to 3.0.0
 

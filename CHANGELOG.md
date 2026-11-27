@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+Roadmap Phase 5, the reward curve (part of #12). The `recruitenv` package is unchanged. Design: [docs/superpowers/specs/2026-11-27-reward-curve-design.md](docs/superpowers/specs/2026-11-27-reward-curve-design.md).
+
+### Training results
+
+- First GRPO reward curve: Qwen2.5-0.5B-Instruct on easy, 168 steps on a free Kaggle T4. Training reward rose from 0.06 to 0.33, close to the 0.369 of shortlisting everyone blind (every 20-step window below it); by the end the model made no accepted reveal calls. Write-up, plot and raw outputs: [docs/results/training.md](docs/results/training.md).
+
+### Training tools
+
+- `examples/train_grpo.py`:
+  - `--precision auto` picks bf16 only on compute capability 8.0+ (`torch` reports bf16 as supported on a T4, which has no native bf16) and fp32 otherwise.
+  - New `--grad-accum`, `--max-tool-calls`, `--max-minutes` (clean stop at a wall-clock limit) and `--stop-flat-steps` (stop when every group scores the same for that many steps).
+  - Logs accepted reveal and decision calls per episode and peak GPU memory, and writes `train_log.jsonl` and `run_info.json` beside `reward_curve.csv`.
+- `scripts/kaggle_train.py` builds a private single-file Kaggle notebook that embeds the training script, installs `recruitenv` at a pinned commit, and optionally runs two configurations at once, one per T4.
+- `scripts/training_references.py` scores blind and reference policies on the training seeds; `scripts/training_report.py` draws the curve against them and compares early and late windows with a bootstrap interval.
+
+### Docs
+
+- The build log and roadmap now say the Space runs 4.0.0, and the 4.0.0 plan's last two tasks are marked done.
+
 ## 4.0.0
 
 Breaking changes to the package layout, the server and the agent scripts. Design: [docs/superpowers/specs/2026-11-25-standalone-core-logs-baselines-design.md](docs/superpowers/specs/2026-11-25-standalone-core-logs-baselines-design.md) (roadmap Phases 4 and 5). The task, generator, rubric and graders are unchanged: the pinned generator hashes and acceptance numbers are identical.

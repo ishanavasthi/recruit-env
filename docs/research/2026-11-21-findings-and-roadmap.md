@@ -12,7 +12,7 @@ This document is the spec for the next phases of work. Each phase gets its own i
 
 ## Status
 
-Updated 2026-11-25. The living build log is in [`.plans/`](../../.plans/implementation.md).
+Updated 2026-11-27. The living build log is in [`.plans/`](../../.plans/implementation.md).
 
 | Phase | Status | Shipped in |
 |---|---|---|
@@ -20,12 +20,12 @@ Updated 2026-11-25. The living build log is in [`.plans/`](../../.plans/implemen
 | 1. One honest score | Done | 2.0.0, PR #13 |
 | 2. Make the task real | Done | 3.0.0, PR #14 ([spec](../superpowers/specs/2026-11-24-real-task-and-fairness-audit-design.md)) |
 | 3. Fairness as an audit | Done | 3.0.0, PR #14 |
-| 4. Standalone core, OpenEnv adapter | Done | 4.0.0, PR C ([spec](../superpowers/specs/2026-11-25-standalone-core-logs-baselines-design.md)) |
-| 5. Show learning | Baseline table done at 10 seeds (the goal is 50+, to extend in PR D); training example done; the reward curve needs a GPU run (the owner chooses Colab or HF Jobs) | 4.0.0, PR C |
-| 6. Public face | Not started | PR D |
+| 4. Standalone core, OpenEnv adapter | Done | 4.0.0, PR #15 ([spec](../superpowers/specs/2026-11-25-standalone-core-logs-baselines-design.md)) |
+| 5. Show learning | Baseline table done at 10 seeds (the goal is 50+, still open in #12); training example done; first reward curve done on a free Kaggle T4 ([results](../results/training.md), [spec](../superpowers/specs/2026-11-27-reward-curve-design.md)): training reward rises to near the blind-labelling line, not past it | 4.0.0, PR #15; reward-curve PR |
+| 6. Public face | Not started | a later PR |
 | 7. Extensions | Not started | later |
 
-The Hugging Face Space runs 3.0.0 (redeployed 2026-11-25).
+The Hugging Face Space runs 4.0.0 (redeployed 2026-11-25).
 
 ## How the evidence was produced
 
@@ -246,7 +246,7 @@ Suggested batching into four PRs: **A** = Phases 0–1, **B** = Phases 2–3 (bo
 
 **Done when:** the README shows the baseline table with seed counts and a reward curve from a real run.
 
-**Constraint:** the development server has integrated graphics only, so training runs elsewhere (Colab or HF Jobs). Evaluation against API models runs here.
+**Constraint:** the development server has integrated graphics only, so training runs elsewhere. The first run used a free Kaggle T4, driven from the server with the Kaggle CLI (`scripts/kaggle_train.py`). Evaluation against API models runs here.
 
 ### Phase 6: the public face
 
@@ -298,4 +298,4 @@ Decided by the owner on 2026-11-21:
 Still open:
 
 1. **Backward compatibility.** *Settled 2026-11-24: the owner confirmed nothing consumes the v1 API.* Originally: whether anything consumes the deployed Space's current API is unknown. The roadmap assumes nothing does and protects against being wrong with the `v1.0.0` tag and a major version bump. Checking the Space's request logs before Phase 1 merges would settle it.
-2. **Training budget.** Phase 5 needs GPU time off the development server. Is Colab or HF Jobs acceptable?
+2. **Training budget.** *Settled 2026-11-26: the owner chose Kaggle's free T4 notebooks.* Originally: Phase 5 needs GPU time off the development server. Is Colab or HF Jobs acceptable?

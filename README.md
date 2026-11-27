@@ -300,7 +300,7 @@ python scripts/run_benchmark.py --agent model:claude-sonnet-5-5 --seeds 0-9 --co
 python scripts/baselines_report.py outputs/bench docs/results/runs --common-seeds
 ```
 
-**Training.** `recruitenv/tools.py` exposes one tool per action (`check_github`, `read_resume`, `shortlist`, ...) with the grader's score as `get_reward()`, matching TRL's `GRPOTrainer(environment_factory=...)`. `examples/train_grpo.py` is a self-contained uv script for a GPU (Colab or `hf jobs uv run`); training seeds start at 10,000, away from the evaluation seeds.
+**Training.** `recruitenv/tools.py` exposes one tool per action (`check_github`, `read_resume`, `shortlist`, ...) with the grader's score as `get_reward()`, matching TRL's `GRPOTrainer(environment_factory=...)`. `examples/train_grpo.py` is a self-contained uv script for a GPU (Colab, `hf jobs uv run`, or a free Kaggle T4 through `scripts/kaggle_train.py`); training seeds start at 10,000, away from the evaluation seeds. The first run is in [Training](#training).
 
 ---
 
@@ -360,6 +360,18 @@ A rejected action (unknown candidate, second decision for a candidate) costs no 
 
 ---
 
+## Training
+
+One GRPO run of Qwen2.5-0.5B-Instruct on easy, 168 steps on a free Kaggle T4 ([write-up](docs/results/training.md)):
+
+![GRPO reward curve on easy](docs/results/training/reward_curve.png)
+
+- **The reward is learnable.** Training reward rose from 0.06 (first 20 steps) to 0.33 (last 20); the 95% interval on the difference is +0.24 to +0.30.
+- **But it stopped at blind labelling.** Every 20-step window averages below 0.369, the score of shortlisting everyone without reading, and by the end the model makes no accepted reveal calls. The rubric heuristic, which reads, scores 0.999.
+- Blind policies pass easy on 0–3% of seeds, so the score separates learning the format from doing the job. Getting past the blind line will need a policy that reads, for example after an SFT warm-up on heuristic episodes or with a larger model; see the write-up's next steps.
+
+---
+
 ## Project Structure
 
 ```
@@ -383,6 +395,9 @@ recruit-env/
 ├── baseline/run_baseline.py   # Decide-only model agent
 ├── examples/train_grpo.py     # GRPO with TRL (uv script, GPU)
 ├── scripts/
+│   ├── kaggle_train.py        # Runs train_grpo.py as a private Kaggle GPU notebook
+│   ├── training_references.py # Blind and reference policy scores on the training seeds
+│   ├── training_report.py     # Reward curve plot and summary for a training run
 │   ├── run_benchmark.py       # Agents over seeds and tasks, logged and resumable
 │   ├── baselines_report.py    # Writes docs/results/baselines.{json,md}
 │   ├── replay.py              # Replays transition logs
@@ -392,7 +407,7 @@ recruit-env/
 ├── docs/
 │   ├── research/              # Findings, roadmap (with status) and the OpenEnv/TRL refresh
 │   ├── superpowers/           # Design specs and implementation plans per release
-│   └── results/               # Baselines, fairness audit and committed model run logs
+│   └── results/               # Baselines, fairness audit, training curve and committed run logs
 ├── .plans/                    # Living build log: problem, approach, implementation, learnings
 └── tests/
 ```

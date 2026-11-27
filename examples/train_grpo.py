@@ -25,12 +25,13 @@ On Kaggle's free GPUs, ``scripts/kaggle_train.py`` builds and pushes a
 private notebook that runs this script (see docs/results/training.md).
 
 Precision: ``--precision auto`` uses bf16 only on GPUs with native bf16
-(compute capability 8.0 or newer) and fp32 otherwise. ``torch`` reports
-bf16 as supported on a T4 through emulation, which is slow, so the check
-uses the compute capability instead.
+(compute capability 8.0 or newer) and fp32 otherwise. ``torch`` reports bf16
+as supported on a T4, which has no native bf16, so the check uses the
+compute capability instead.
 
 CPU smoke test of the whole pipeline (no learning; a random tiny model makes
-no tool calls, so the reward stays at the floor):
+no tool calls, so the reward stays at the floor). Last checked 2026-11-27
+with TRL 1.19.0 and torch 2.15 (CPU), in about 30 seconds:
 
     python examples/train_grpo.py --cpu --episodes 8 \\
         --model trl-internal-testing/tiny-Qwen3MoeForCausalLM

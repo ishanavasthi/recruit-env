@@ -31,7 +31,7 @@ RecruitEnv should stand on its own as a library: `pip install`, then `reset` and
 ## Non-goals
 
 - The reward curve from a real training run. It needs a GPU, and the owner decides whether it runs on Colab or HF Jobs, because that costs money. #12 stays open for it.
-- PyPI release, results page, report and demo (Phase 6, PR D).
+- PyPI release, results page, report and demo (Phase 6, a later PR).
 - Any change to the task, generator, rubric or graders. The generator hashes and acceptance numbers must not move.
 
 ## Anti-goals
