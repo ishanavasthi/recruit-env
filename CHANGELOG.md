@@ -2,11 +2,13 @@
 
 ## Unreleased
 
-Roadmap Phase 5, the reward curve (part of #12). The `recruitenv` package is unchanged. Design: [docs/superpowers/specs/2026-11-27-reward-curve-design.md](docs/superpowers/specs/2026-11-27-reward-curve-design.md).
+Roadmap Phase 5, the reward curve and a supervised warm-up (part of #12). The `recruitenv` package is unchanged. Designs: [reward curve](docs/superpowers/specs/2026-11-27-reward-curve-design.md), [warm start](docs/superpowers/specs/2026-11-27-warm-start-design.md).
 
 ### Training results
 
 - First GRPO reward curve: Qwen2.5-0.5B-Instruct on easy, 168 steps on a free Kaggle T4. Training reward rose from 0.06 to 0.33, close to the 0.369 of shortlisting everyone blind (every 20-step window below it); by the end the model made no accepted reveal calls. Write-up, plot and raw outputs: [docs/results/training.md](docs/results/training.md).
+- The run-1 write-up now states what its limits allowed: a full read is about 6,000 completion tokens, the run allowed 2,560, and a rubric heuristic limited to the ~18 reveals that fit scores about 0.5.
+- Second run: SFT of the same model on 1,000 demonstrations that read every source, then greedy evaluation on held-out seeds 0–96 / 0–91. Every episode makes 50 accepted reveal calls (in the six kept transcripts, all 50 distinct sources) and decides everyone, but labels are at chance (3.5 of 10 correct), so the score is 0.27, below shortlisting everyone (0.369). A variant whose demonstrations write the rubric ranking before deciding shows no detected difference (+0.003, 95% CI −0.040 to +0.046); its written rankings do not follow the evidence.
 
 ### Training tools
 
@@ -15,6 +17,10 @@ Roadmap Phase 5, the reward curve (part of #12). The `recruitenv` package is unc
   - New `--grad-accum`, `--max-tool-calls`, `--max-minutes` (clean stop at a wall-clock limit) and `--stop-flat-steps` (stop when every group scores the same for that many steps).
   - Logs accepted reveal and decision calls per episode and peak GPU memory, and writes `train_log.jsonl` and `run_info.json` beside `reward_curve.csv`.
 - `scripts/kaggle_train.py` builds a private single-file Kaggle notebook that embeds the training script, installs `recruitenv` at a pinned commit, and optionally runs two configurations at once, one per T4.
+- `examples/warm_start.py`: demonstrations from `rubric_full_read` in TRL's conversation format (batched tool calls), SFT with Adafactor and fp16, held-out evaluation that reuses TRL's prompt rendering, parser and tool-result tokens, and an optional GRPO stage. `tests/test_warm_start.py` checks that a demonstration replayed through the evaluation loop gives exactly the tokens SFT trains on.
+- `examples/train_grpo.py`: `--seed-start`, `--save-model` and `--optim`; the prompt now ends with a blank line before the environment's opening text.
+- `scripts/kaggle_train.py` embeds both scripts and runs either (`--script`), and sets `expandable_segments` for CUDA memory.
+- `scripts/warm_start_report.py` plots held-out score, reading and correct labels by stage, with paired bootstrap intervals.
 - `scripts/training_references.py` scores blind and reference policies on the training seeds; `scripts/training_report.py` draws the curve against them and compares early and late windows with a bootstrap interval.
 
 ### Docs

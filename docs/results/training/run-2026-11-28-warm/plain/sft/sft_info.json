@@ -1,0 +1,19 @@
+{
+  "episodes": 1000,
+  "demo_seeds": [
+    10000,
+    10999
+  ],
+  "demo_mean_score": 0.999,
+  "ranking": false,
+  "tokens": [
+    6344,
+    6643
+  ],
+  "epochs": 2.0,
+  "learning_rate": 1e-05,
+  "optim": "adafactor",
+  "precision": "fp16",
+  "steps": 250,
+  "minutes": 133.47
+}

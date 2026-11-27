@@ -13,7 +13,7 @@
 | — | Hugging Face Space redeployed to 4.0.0 | Done 2026-11-25 | Space commit `f15a1ca` |
 | 4 | Standalone core, OpenEnv adapter, concurrency (#11) | Done (4.0.0) | PR #15 |
 | — | JSONL transition logs and replay (#8) | Done (4.0.0) | PR #15 |
-| 5 | Baseline table and training example (#12) | Mostly done. The baseline table covers 10 seeds (goal 50+, still open). First reward curve done on Kaggle (2026-11-27): reward rises to near the blind-labelling line, not past it | PR #15; reward-curve PR |
+| 5 | Baseline table and training example (#12) | Mostly done. The baseline table covers 10 seeds (goal 50+, still open). First reward curve done on Kaggle (2026-11-27): reward rises to near the blind-labelling line, not past it. SFT warm-up (2026-11-28): reads everything on held-out seeds, labels at chance | PR #15; PR #16 |
 | 6 | Public face: README, results page, report, demo, PyPI | Not started | later |
 | 7 | Extensions (#2 ranking, #3 reasons, per-action costs, …) | Not started | later |
 
@@ -35,7 +35,9 @@
   - `scripts/run_benchmark.py` and `baselines_report.py` write `docs/results/baselines.md`;
   - `scripts/fairness_report.py`, `probe_scoring.py` and `difficulty_sweep.py`;
   - `scripts/replay.py`.
-- **Training:** `examples/train_grpo.py` (GRPO with TRL), run on Kaggle through `scripts/kaggle_train.py`. `scripts/training_references.py` and `training_report.py` produce `docs/results/training.md`.
+- **Training:**
+  - `examples/train_grpo.py` (GRPO with TRL) and `examples/warm_start.py` (SFT on reading demonstrations, held-out evaluation with TRL's rollout code, optional GRPO), run on Kaggle through `scripts/kaggle_train.py`;
+  - `scripts/training_references.py`, `training_report.py` and `warm_start_report.py` produce `docs/results/training.md`.
 
 ## Integrations
 

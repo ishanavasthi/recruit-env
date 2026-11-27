@@ -1,0 +1,24 @@
+{
+  "model": "/kaggle/working/grpo/ranking/sft/model",
+  "task": "easy",
+  "seeds": [
+    0,
+    91
+  ],
+  "minutes": 120.81,
+  "episodes": 92,
+  "mean_score": 0.2687,
+  "pass_rate": 0.0652,
+  "success_rate": 0.0326,
+  "correct_labels": 3.2609,
+  "decided": 10,
+  "shortlist_hits": 1,
+  "reveals": 50,
+  "decision_calls": 10,
+  "failed_call_share": 0.0,
+  "all_decided": 1.0,
+  "stops": {
+    "no tool call": 92
+  },
+  "completion_tokens_median": 5382.5
+}

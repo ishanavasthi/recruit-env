@@ -29,11 +29,11 @@ Publish a reward curve from a real training run of a model on RecruitEnv, with e
 ## Result
 
 See `docs/results/training.md`. In short:
-- The 1e-6 arm ran 168 steps in 600 minutes. Training reward rose from 0.06 to 0.33, close to the 0.369 blind line (every 20-step window below it, 3 single steps above, at most 0.385), and by the end the model made no accepted reveal calls.
+- The 1e-6 arm ran 168 steps in 600 minutes. Its limits (2,560 completion tokens) left room for about 18 of 50 reveals, where a rubric heuristic scores about 0.5; this was found after the run. Training reward rose from 0.06 to 0.33, close to the 0.369 blind line (every 20-step window below it, 3 single steps above, at most 0.385), and by the end the model made no accepted reveal calls.
 - The 3e-6 arm ran out of GPU memory at step 8. Episodes grew longer after the smoke test, and GPU memory grows with the longest episode.
 
 ## Not done
 
-- An SFT warm-up, a larger model, saved checkpoints and a held-out evaluation. These are the next steps listed in the write-up.
+- A larger model and saved checkpoints. The SFT warm-up and a held-out evaluation followed in a second run (`2026-11-27-warm-start-design.md`).
 - The 50+ seed baseline table (#12).
 - Phase 6 (results page, report, demo, PyPI).

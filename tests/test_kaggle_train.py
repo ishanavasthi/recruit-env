@@ -57,6 +57,17 @@ def test_arms_run_one_per_gpu(tmp_path):
     assert "CUDA_VISIBLE_DEVICES" in kernel and "'lr1e-5', ['--learning-rate', '1e-5']" in kernel
 
 
+def test_build_runs_the_warm_start_pipeline(tmp_path):
+    kernel = (kaggle_train.build("x", "o", "abc", ["--grpo"], tmp_path, [("plain", [])], "warm_start.py")
+              / "kernel.py").read_text()
+    compile(kernel, "kernel.py", "exec")
+    assert "['warm_start.py', 'pipeline', '--out']" in kernel
+    assert repr((ROOT / "examples" / "warm_start.py").read_text()) in kernel
+    import pytest
+    with pytest.raises(ValueError):
+        kaggle_train.build("x", "o", "abc", [], tmp_path, script="other.py")
+
+
 def test_counting_env_adds_no_tools_and_counts():
     from recruitenv.tools import RecruitToolEnv
 

@@ -21,7 +21,7 @@ Updated 2026-11-27. The living build log is in [`.plans/`](../../.plans/implemen
 | 2. Make the task real | Done | 3.0.0, PR #14 ([spec](../superpowers/specs/2026-11-24-real-task-and-fairness-audit-design.md)) |
 | 3. Fairness as an audit | Done | 3.0.0, PR #14 |
 | 4. Standalone core, OpenEnv adapter | Done | 4.0.0, PR #15 ([spec](../superpowers/specs/2026-11-25-standalone-core-logs-baselines-design.md)) |
-| 5. Show learning | Baseline table done at 10 seeds (the goal is 50+, still open in #12); training example done; first reward curve done on a free Kaggle T4 ([results](../results/training.md), [spec](../superpowers/specs/2026-11-27-reward-curve-design.md)): training reward rises to near the blind-labelling line, not past it | 4.0.0, PR #15; reward-curve PR |
+| 5. Show learning | Baseline table done at 10 seeds (the goal is 50+, still open in #12); training example done; first reward curve done on a free Kaggle T4 ([results](../results/training.md), [spec](../superpowers/specs/2026-11-27-reward-curve-design.md)): training reward rises to near the blind-labelling line, not past it; a supervised warm-up ([spec](../superpowers/specs/2026-11-27-warm-start-design.md)) teaches the model to read everything on held-out seeds but not to judge (labels at chance) | 4.0.0, PR #15; PR #16 |
 | 6. Public face | Not started | a later PR |
 | 7. Extensions | Not started | later |
 
@@ -246,7 +246,7 @@ Suggested batching into four PRs: **A** = Phases 0–1, **B** = Phases 2–3 (bo
 
 **Done when:** the README shows the baseline table with seed counts and a reward curve from a real run.
 
-**Constraint:** the development server has integrated graphics only, so training runs elsewhere. The first run used a free Kaggle T4, driven from the server with the Kaggle CLI (`scripts/kaggle_train.py`). Evaluation against API models runs here.
+**Constraint:** the development server has integrated graphics only, so training runs elsewhere. Both training runs used free Kaggle T4s, driven from the server with the Kaggle CLI (`scripts/kaggle_train.py`). At ~6,500-token episodes a T4 manages SFT (about 4 s per episode in fp16). One pilot GRPO step took 21 minutes, under conditions that overstate it (see the warm-start spec); GRPO from the final SFT model has not been timed. Evaluation against API models runs here.
 
 ### Phase 6: the public face
 

@@ -47,6 +47,10 @@ Outputs, in ``--output-dir``:
 - ``train_log.jsonl``: every logged metric dict, one line per step, plus
   peak GPU memory.
 - ``run_info.json``: versions, GPU, precision, arguments and wall clock.
+- ``model/`` with ``--save-model``: the final weights and tokenizer.
+
+The first run (docs/results/training.md) used this script at commit 47fc093,
+whose prompt had no blank line before the environment's opening text.
 
 A 0.5B model rarely calls tools well at first; expect a flat start, and see
 TRL's notes on a short SFT warm-up if every group gets identical rewards.
@@ -65,6 +69,8 @@ from pathlib import Path
 os.environ.setdefault("TRL_EXPERIMENTAL_SILENCE", "1")
 
 TRAIN_SEEDS_FROM = 10_000   # evaluation uses seeds 0-199
+# TRL appends the environment's opening text to the prompt with no separator.
+PROMPT = "Triage this candidate pool. Use the tools, then decide everyone.\n\n"
 
 
 def pick_precision(requested: str, cpu: bool) -> str:
@@ -135,7 +141,7 @@ def run_info(args: argparse.Namespace, precision: str) -> dict:
             "transformers": transformers.__version__,
             "torch": torch.__version__,
         },
-        "train_seeds": [TRAIN_SEEDS_FROM, TRAIN_SEEDS_FROM + args.episodes - 1],
+        "train_seeds": [args.seed_start, args.seed_start + args.episodes - 1],
     }
 
 
@@ -144,6 +150,7 @@ def main() -> None:
     ap.add_argument("--model", default="Qwen/Qwen2.5-0.5B-Instruct")
     ap.add_argument("--task", default="easy", choices=["easy", "medium", "hard"])
     ap.add_argument("--episodes", type=int, default=512, help="distinct training seeds")
+    ap.add_argument("--seed-start", type=int, default=TRAIN_SEEDS_FROM, help="first training seed (>= 200)")
     ap.add_argument("--max-steps", type=int, default=200)
     ap.add_argument("--num-generations", type=int, default=4)
     ap.add_argument("--batch-size", type=int, default=4, help="per-device micro-batch of completions")
@@ -154,6 +161,8 @@ def main() -> None:
     ap.add_argument("--max-tool-calls", type=int, default=40,
                     help="tool-calling turns per episode (TRL's max_tool_calling_iterations)")
     ap.add_argument("--learning-rate", type=float, default=1e-6)
+    ap.add_argument("--optim", default="adamw_torch",
+                    help="optimizer; adafactor keeps almost no state, which saves about 4 GB on a 0.5B model")
     ap.add_argument("--precision", default="auto", choices=["auto", "bf16", "fp16", "fp32"])
     ap.add_argument("--max-minutes", type=float, default=0,
                     help="stop cleanly after this much training wall clock (0 = no limit)")
@@ -161,6 +170,7 @@ def main() -> None:
                     help="stop after this many consecutive steps with zero reward spread (0 = never)")
     ap.add_argument("--log-completions", action="store_true", help="print one sample rollout per step")
     ap.add_argument("--output-dir", default="outputs/grpo")
+    ap.add_argument("--save-model", action="store_true", help="save the final model to <output-dir>/model")
     ap.add_argument("--cpu", action="store_true", help="smoke test on CPU (slow; tiny settings)")
     args = ap.parse_args()
 
@@ -173,8 +183,10 @@ def main() -> None:
     EnvCls = counting_env(RecruitToolEnv)
 
     precision = pick_precision(args.precision, args.cpu)
-    prompt = [{"role": "user", "content": "Triage this candidate pool. Use the tools, then decide everyone."}]
-    seeds = list(range(TRAIN_SEEDS_FROM, TRAIN_SEEDS_FROM + args.episodes))
+    if args.seed_start < 200:
+        ap.error("training seeds must not overlap the evaluation seeds 0-199")
+    prompt = [{"role": "user", "content": PROMPT}]
+    seeds = list(range(args.seed_start, args.seed_start + args.episodes))
     dataset = Dataset.from_dict({
         "prompt": [prompt] * len(seeds),
         "task": [args.task] * len(seeds),
@@ -244,6 +256,7 @@ def main() -> None:
         max_completion_length=args.max_completion_length if not args.cpu else 512,
         max_tool_calling_iterations=args.max_tool_calls,
         learning_rate=args.learning_rate,
+        optim=args.optim,
         logging_steps=1,
         bf16=precision == "bf16",
         fp16=precision == "fp16",
@@ -265,6 +278,9 @@ def main() -> None:
     except BaseException as exc:
         write_info(status=f"failed: {type(exc).__name__}: {exc}")
         raise
+    if args.save_model:
+        trainer.save_model(str(out / "model"))
+        trainer.processing_class.save_pretrained(str(out / "model"))
     write_info(status="finished", steps=trainer.state.global_step)
     print(f"reward curve: {curve}")
 

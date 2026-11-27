@@ -2,6 +2,20 @@
 
 Newest first.
 
+## 2026-11-28: supervised warm-up reads everything but labels at chance
+
+- **What:** SFT of Qwen2.5-0.5B-Instruct on 1,000 episodes of `rubric_full_read`, two arms on two Kaggle T4s, then greedy evaluation on held-out seeds. Every episode made 50 accepted reveal calls (in the six kept transcripts, all 50 distinct sources) and decided everyone, with no failed calls. Labels were at chance (3.5 of 10 correct), so the score (0.27) sits below shortlisting everyone (0.369). An arm whose demonstrations write the rubric ranking before deciding showed no detected difference, and its written rankings did not follow the evidence.
+- **Why:** run 1 settled near the blind line. Its 2,560-token limit only allowed about 18 of 50 reveals, which was found only when sizing this run.
+- **Gotchas:**
+  - Check that the episode limits allow the behaviour you want before training. A full read is about 6,000 completion tokens.
+  - On a T4, Qwen2.5 without a padding mask makes transformers request grouped-query SDPA, which falls back to the math kernel and its full score matrix. Repeat the key/value heads instead, and allow only the memory-efficient kernel, so a fallback fails instead of eating memory.
+  - Full fine-tuning with AdamW does not fit a T4 at ~6,600 tokens; Adafactor does. fp16 mixed precision was about 4× faster than fp32.
+  - One pilot GRPO step took 21 minutes on a T4, but from a model that never ended its turns and before the attention fix, so it was dropped from this run without a fair timing.
+  - Count what the logs measure: "accepted reveal calls" is not "distinct sources read" (the environment accepts repeats). Check the transcripts before saying "read everything".
+  - Store tool-calling conversations pre-tokenized: an Arrow table merges every tool's arguments into every call.
+  - Kaggle releases output files only when a notebook ends, and `kaggle kernels output --file-pattern` skips the model weights.
+- **Takeaway:** imitation teaches a small model the protocol quickly, here 60 tool calls in order from 1,000 examples, but not the aggregation the score rewards. The score tells the three kinds of policy apart: blind, reading then guessing, and reading then weighing the evidence.
+
 ## 2026-11-27: first reward curve, on a free Kaggle T4
 
 - **What:** GRPO on easy with Qwen2.5-0.5B-Instruct, 168 steps in 10 hours. Training reward rose from 0.06 to 0.33, close to 0.369, the score of shortlisting everyone without reading (every 20-step window below it, 3 single steps above). By the end the model made no accepted reveal calls. A second arm at 3e-6 ran out of GPU memory at step 8.

@@ -300,7 +300,7 @@ python scripts/run_benchmark.py --agent model:claude-sonnet-5-5 --seeds 0-9 --co
 python scripts/baselines_report.py outputs/bench docs/results/runs --common-seeds
 ```
 
-**Training.** `recruitenv/tools.py` exposes one tool per action (`check_github`, `read_resume`, `shortlist`, ...) with the grader's score as `get_reward()`, matching TRL's `GRPOTrainer(environment_factory=...)`. `examples/train_grpo.py` is a self-contained uv script for a GPU (Colab, `hf jobs uv run`, or a free Kaggle T4 through `scripts/kaggle_train.py`); training seeds start at 10,000, away from the evaluation seeds. The first run is in [Training](#training).
+**Training.** `recruitenv/tools.py` exposes one tool per action (`check_github`, `read_resume`, `shortlist`, ...) with the grader's score as `get_reward()`, matching TRL's `GRPOTrainer(environment_factory=...)`. `examples/train_grpo.py` is a self-contained uv script for a GPU (Colab, `hf jobs uv run`, or a free Kaggle T4 through `scripts/kaggle_train.py`); training seeds start at 10,000, away from the evaluation seeds. `examples/warm_start.py` fine-tunes on reading demonstrations first and evaluates on held-out seeds with TRL's own rollout code. Both runs are in [Training](#training).
 
 ---
 
@@ -362,13 +362,22 @@ A rejected action (unknown candidate, second decision for a candidate) costs no 
 
 ## Training
 
-One GRPO run of Qwen2.5-0.5B-Instruct on easy, 168 steps on a free Kaggle T4 ([write-up](docs/results/training.md)):
+Two runs of Qwen2.5-0.5B-Instruct on easy, each on a free Kaggle T4 ([write-up](docs/results/training.md)).
+
+**Run 1: GRPO from the instruct model,** 168 steps:
 
 ![GRPO reward curve on easy](docs/results/training/reward_curve.png)
 
 - **The reward is learnable.** Training reward rose from 0.06 (first 20 steps) to 0.33 (last 20); the 95% interval on the difference is +0.24 to +0.30.
-- **But it stopped at blind labelling.** Every 20-step window averages below 0.369, the score of shortlisting everyone without reading, and by the end the model makes no accepted reveal calls. The rubric heuristic, which reads, scores 0.999.
-- Blind policies pass easy on 0–3% of seeds, so the score separates learning the format from doing the job. Getting past the blind line will need a policy that reads, for example after an SFT warm-up on heuristic episodes or with a larger model; see the write-up's next steps.
+- **But it stopped at blind labelling.** Every 20-step window averages below 0.369, the score of shortlisting everyone without reading, and by the end the model makes no accepted reveal calls. The run's token limit left room for only about 18 of 50 reveals.
+
+**Run 2: supervised warm-up on 1,000 episodes that read everything,** then held-out seeds:
+
+![Warm start: held-out score, evidence read and correct labels](docs/results/training/warm_start.png)
+
+- **Reading transferred.** Every evaluated episode makes 50 accepted reveal calls (in the kept transcripts, all 50 distinct sources) and decides all 10 candidates, with no failed tool calls (the instruct model: 2 reveals, 0.8 decisions).
+- **Judging did not.** Labels are at chance (3.5 of 10 correct), so the score is 0.27, below shortlisting everyone (0.369). Demonstrations that wrote out the rubric ranking before deciding did not help: the model wrote rankings unrelated to the evidence.
+- The score separates the three kinds of policy: blind labelling (the blind policies measured average at most 0.369), reading then guessing (about 0.27), and reading then weighing the evidence (the rubric heuristic, 0.999).
 
 ---
 
@@ -394,10 +403,12 @@ recruit-env/
 ├── inference.py               # Step-by-step model agent
 ├── baseline/run_baseline.py   # Decide-only model agent
 ├── examples/train_grpo.py     # GRPO with TRL (uv script, GPU)
+├── examples/warm_start.py     # SFT on reading demonstrations, held-out evaluation, optional GRPO
 ├── scripts/
-│   ├── kaggle_train.py        # Runs train_grpo.py as a private Kaggle GPU notebook
+│   ├── kaggle_train.py        # Runs train_grpo.py or warm_start.py as a private Kaggle GPU notebook
 │   ├── training_references.py # Blind and reference policy scores on the training seeds
 │   ├── training_report.py     # Reward curve plot and summary for a training run
+│   ├── warm_start_report.py   # Held-out scores, reading and labels by stage for a warm-start run
 │   ├── run_benchmark.py       # Agents over seeds and tasks, logged and resumable
 │   ├── baselines_report.py    # Writes docs/results/baselines.{json,md}
 │   ├── replay.py              # Replays transition logs
