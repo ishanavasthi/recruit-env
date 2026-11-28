@@ -1,0 +1,80 @@
+{
+  "args": {
+    "cmd": "pipeline",
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "out": "/kaggle/working/grpo/ranking",
+    "base_eval": false,
+    "ranking": true,
+    "sft_episodes": 1000,
+    "sft_epochs": 2.0,
+    "sft_learning_rate": 1e-05,
+    "sft_grad_accum": 8,
+    "sft_precision": "fp16",
+    "optim": "adafactor",
+    "grpo": false,
+    "grpo_args": "",
+    "min_grpo_minutes": 60,
+    "deadline_minutes": 600,
+    "task": "easy",
+    "seeds": "0:100",
+    "max_turns": 20,
+    "max_completion_length": 7000,
+    "max_new_tokens": 512,
+    "eval_minutes": 120.0,
+    "cpu": false
+  },
+  "stages": {
+    "sft": {
+      "status": "done",
+      "episodes": 1000,
+      "demo_seeds": [
+        10000,
+        10999
+      ],
+      "demo_mean_score": 0.999,
+      "ranking": true,
+      "tokens": [
+        6461,
+        6760
+      ],
+      "epochs": 2.0,
+      "learning_rate": 1e-05,
+      "optim": "adafactor",
+      "precision": "fp16",
+      "steps": 250,
+      "minutes": 129.16,
+      "at_minute": 132.2
+    },
+    "sft_eval": {
+      "status": "done",
+      "model": "/kaggle/working/grpo/ranking/sft/model",
+      "task": "easy",
+      "seeds": [
+        0,
+        91
+      ],
+      "minutes": 120.81,
+      "episodes": 92,
+      "mean_score": 0.2687,
+      "pass_rate": 0.0652,
+      "success_rate": 0.0326,
+      "correct_labels": 3.2609,
+      "decided": 10,
+      "shortlist_hits": 1,
+      "reveals": 50,
+      "decision_calls": 10,
+      "failed_call_share": 0.0,
+      "all_decided": 1.0,
+      "stops": {
+        "no tool call": 92
+      },
+      "completion_tokens_median": 5382.5,
+      "at_minute": 253.0
+    },
+    "grpo": {
+      "status": "skipped",
+      "minutes_available": 184.9,
+      "at_minute": 253.0
+    }
+  }
+}

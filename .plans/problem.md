@@ -21,6 +21,6 @@ Roadmap Phases 0 to 6 in `docs/research/2026-11-21-findings-and-roadmap.md` are 
 ## Constraints
 
 - The project is presented on its own terms. Its origin as an event entry is never mentioned.
-- The development server has no GPU. Model evaluation goes through an API proxy, and training runs elsewhere (Colab or HF Jobs; the owner decides, because it costs money).
+- The development server has no GPU. Model evaluation goes through an API proxy, and training runs elsewhere: free Kaggle T4 notebooks (the owner's choice, 2026-11-26). Paid compute such as HF Jobs needs the owner's approval.
 - CI runs cost money, so work is batched into a few large PRs.
 - Results must be reproducible from committed seeds and commands.

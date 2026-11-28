@@ -1,0 +1,317 @@
+{
+  "task": "easy",
+  "references": {
+    "idle": {
+      "mean": 0.001,
+      "pass_rate": 0.0
+    },
+    "shortlist everyone": {
+      "mean": 0.3692,
+      "pass_rate": 0.0
+    },
+    "hold everyone": {
+      "mean": 0.2462,
+      "pass_rate": 0.0
+    },
+    "reject everyone": {
+      "mean": 0.1846,
+      "pass_rate": 0.0
+    },
+    "blind quota fill": {
+      "mean": 0.2673,
+      "pass_rate": 0.034
+    },
+    "random labels": {
+      "mean": 0.2691,
+      "pass_rate": 0.022
+    },
+    "rubric heuristic": {
+      "mean": 0.999,
+      "pass_rate": 1.0
+    },
+    "oracle": {
+      "mean": 0.999,
+      "pass_rate": 1.0
+    }
+  },
+  "arms": [
+    {
+      "arm": "lr1e-6",
+      "learning_rate": 1e-06,
+      "steps": 168,
+      "minutes": 600.2,
+      "status": "finished",
+      "window_steps": 20,
+      "windows": [
+        {
+          "steps": [
+            1,
+            20
+          ],
+          "reward": 0.0557,
+          "reward_spread": 0.0807,
+          "reveal_calls": 3.64,
+          "decision_calls": 1.46,
+          "zero_spread_steps": 4,
+          "blind_score_steps": 0
+        },
+        {
+          "steps": [
+            21,
+            40
+          ],
+          "reward": 0.2655,
+          "reward_spread": 0.1248,
+          "reveal_calls": 0.3,
+          "decision_calls": 7.22,
+          "zero_spread_steps": 0,
+          "blind_score_steps": 0
+        },
+        {
+          "steps": [
+            41,
+            60
+          ],
+          "reward": 0.304,
+          "reward_spread": 0.1084,
+          "reveal_calls": 0.02,
+          "decision_calls": 8.21,
+          "zero_spread_steps": 2,
+          "blind_score_steps": 2
+        },
+        {
+          "steps": [
+            61,
+            80
+          ],
+          "reward": 0.3101,
+          "reward_spread": 0.0986,
+          "reveal_calls": 0.0,
+          "decision_calls": 8.49,
+          "zero_spread_steps": 5,
+          "blind_score_steps": 5
+        },
+        {
+          "steps": [
+            81,
+            100
+          ],
+          "reward": 0.3159,
+          "reward_spread": 0.1125,
+          "reveal_calls": 0.04,
+          "decision_calls": 8.66,
+          "zero_spread_steps": 1,
+          "blind_score_steps": 1
+        },
+        {
+          "steps": [
+            101,
+            120
+          ],
+          "reward": 0.2651,
+          "reward_spread": 0.1331,
+          "reveal_calls": 2.57,
+          "decision_calls": 8.46,
+          "zero_spread_steps": 0,
+          "blind_score_steps": 0
+        },
+        {
+          "steps": [
+            121,
+            140
+          ],
+          "reward": 0.2644,
+          "reward_spread": 0.1274,
+          "reveal_calls": 13.72,
+          "decision_calls": 7.8,
+          "zero_spread_steps": 0,
+          "blind_score_steps": 0
+        },
+        {
+          "steps": [
+            141,
+            160
+          ],
+          "reward": 0.3159,
+          "reward_spread": 0.1,
+          "reveal_calls": 0.06,
+          "decision_calls": 8.61,
+          "zero_spread_steps": 3,
+          "blind_score_steps": 3
+        },
+        {
+          "steps": [
+            161,
+            168
+          ],
+          "reward": 0.3481,
+          "reward_spread": 0.0485,
+          "reveal_calls": 0.0,
+          "decision_calls": 9.45,
+          "zero_spread_steps": 3,
+          "blind_score_steps": 3
+        }
+      ],
+      "first_window": {
+        "steps": [
+          1,
+          20
+        ],
+        "reward": 0.0557,
+        "reward_spread": 0.0807,
+        "reveal_calls": 3.64,
+        "decision_calls": 1.46,
+        "zero_spread_steps": 4,
+        "blind_score_steps": 0
+      },
+      "last_window": {
+        "steps": [
+          149,
+          168
+        ],
+        "reward": 0.327,
+        "reward_spread": 0.0824,
+        "reveal_calls": 0.0,
+        "decision_calls": 8.84,
+        "zero_spread_steps": 5,
+        "blind_score_steps": 5
+      },
+      "late_minus_early": {
+        "diff": 0.2713,
+        "ci95": [
+          0.2418,
+          0.2982
+        ],
+        "excludes_zero": true
+      },
+      "peak_gpu_gb": 11.53
+    },
+    {
+      "arm": "lr3e-6",
+      "learning_rate": 3e-06,
+      "steps": 8,
+      "minutes": 45.94,
+      "status": "failed: OutOfMemoryError: CUDA out of memory. Tried to allocate 2.97 GiB. GPU 0 has a total capacity of 14.56 GiB of which 2.95 GiB is free. Including non-PyTorch memory, this process has 11.61 GiB memory in use. Of the allocated memory 10.73 GiB is allocated by PyTorch, and 755.27 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)",
+      "window_steps": 4,
+      "windows": [
+        {
+          "steps": [
+            1,
+            8
+          ],
+          "reward": 0.0267,
+          "reward_spread": 0.0451,
+          "reveal_calls": 2.09,
+          "decision_calls": 0.67,
+          "zero_spread_steps": 1,
+          "blind_score_steps": 0
+        }
+      ],
+      "first_window": {
+        "steps": [
+          1,
+          4
+        ],
+        "reward": 0.0354,
+        "reward_spread": 0.0538,
+        "reveal_calls": 3.09,
+        "decision_calls": 1.09,
+        "zero_spread_steps": 1,
+        "blind_score_steps": 0
+      },
+      "last_window": {
+        "steps": [
+          5,
+          8
+        ],
+        "reward": 0.0181,
+        "reward_spread": 0.0364,
+        "reveal_calls": 1.09,
+        "decision_calls": 0.25,
+        "zero_spread_steps": 0,
+        "blind_score_steps": 0
+      },
+      "late_minus_early": {
+        "diff": -0.0173,
+        "ci95": [
+          -0.05,
+          0.0095
+        ],
+        "excludes_zero": false
+      },
+      "peak_gpu_gb": 11.53
+    }
+  ],
+  "run_info": {
+    "lr1e-6": {
+      "gpus": [
+        "Tesla T4"
+      ],
+      "precision": "fp32",
+      "versions": {
+        "recruitenv": "4.0.0",
+        "trl": "1.19.0",
+        "transformers": "5.20.2",
+        "torch": "2.11.0+cu130"
+      },
+      "python": "3.13.16",
+      "train_seeds": [
+        10000,
+        10999
+      ],
+      "args": {
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "task": "easy",
+        "episodes": 1000,
+        "max_steps": 1000,
+        "num_generations": 8,
+        "batch_size": 4,
+        "grad_accum": 2,
+        "max_completion_length": 2560,
+        "max_tool_calls": 40,
+        "learning_rate": 1e-06,
+        "precision": "auto",
+        "max_minutes": 600.0,
+        "stop_flat_steps": 30,
+        "log_completions": false,
+        "output_dir": "/kaggle/working/grpo/lr1e-6",
+        "cpu": false
+      }
+    },
+    "lr3e-6": {
+      "gpus": [
+        "Tesla T4"
+      ],
+      "precision": "fp32",
+      "versions": {
+        "recruitenv": "4.0.0",
+        "trl": "1.19.0",
+        "transformers": "5.20.2",
+        "torch": "2.11.0+cu130"
+      },
+      "python": "3.13.16",
+      "train_seeds": [
+        10000,
+        10999
+      ],
+      "args": {
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "task": "easy",
+        "episodes": 1000,
+        "max_steps": 1000,
+        "num_generations": 8,
+        "batch_size": 4,
+        "grad_accum": 2,
+        "max_completion_length": 2560,
+        "max_tool_calls": 40,
+        "learning_rate": 3e-06,
+        "precision": "auto",
+        "max_minutes": 600.0,
+        "stop_flat_steps": 30,
+        "log_completions": false,
+        "output_dir": "/kaggle/working/grpo/lr3e-6",
+        "cpu": false
+      }
+    }
+  }
+}

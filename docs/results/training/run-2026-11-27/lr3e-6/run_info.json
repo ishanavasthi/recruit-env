@@ -1,0 +1,37 @@
+{
+  "args": {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "task": "easy",
+    "episodes": 1000,
+    "max_steps": 1000,
+    "num_generations": 8,
+    "batch_size": 4,
+    "grad_accum": 2,
+    "max_completion_length": 2560,
+    "max_tool_calls": 40,
+    "learning_rate": 3e-06,
+    "precision": "auto",
+    "max_minutes": 600.0,
+    "stop_flat_steps": 30,
+    "log_completions": false,
+    "output_dir": "/kaggle/working/grpo/lr3e-6",
+    "cpu": false
+  },
+  "precision": "fp32",
+  "gpus": [
+    "Tesla T4"
+  ],
+  "python": "3.13.16",
+  "versions": {
+    "recruitenv": "4.0.0",
+    "trl": "1.19.0",
+    "transformers": "5.20.2",
+    "torch": "2.11.0+cu130"
+  },
+  "train_seeds": [
+    10000,
+    10999
+  ],
+  "status": "failed: OutOfMemoryError: CUDA out of memory. Tried to allocate 2.97 GiB. GPU 0 has a total capacity of 14.56 GiB of which 2.95 GiB is free. Including non-PyTorch memory, this process has 11.61 GiB memory in use. Of the allocated memory 10.73 GiB is allocated by PyTorch, and 755.27 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)",
+  "minutes": 45.94
+}

@@ -1,0 +1,107 @@
+{
+  "args": {
+    "cmd": "pipeline",
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "out": "/kaggle/working/grpo/plain",
+    "base_eval": true,
+    "ranking": false,
+    "sft_episodes": 1000,
+    "sft_epochs": 2.0,
+    "sft_learning_rate": 1e-05,
+    "sft_grad_accum": 8,
+    "sft_precision": "fp16",
+    "optim": "adafactor",
+    "grpo": false,
+    "grpo_args": "",
+    "min_grpo_minutes": 60,
+    "deadline_minutes": 600,
+    "task": "easy",
+    "seeds": "0:100",
+    "max_turns": 20,
+    "max_completion_length": 7000,
+    "max_new_tokens": 512,
+    "eval_minutes": 120.0,
+    "cpu": false
+  },
+  "stages": {
+    "base_eval": {
+      "status": "done",
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "task": "easy",
+      "seeds": [
+        0,
+        99
+      ],
+      "minutes": 16.64,
+      "episodes": 100,
+      "mean_score": 0.0192,
+      "pass_rate": 0.0,
+      "success_rate": 0.0,
+      "correct_labels": 0.3,
+      "decided": 0.85,
+      "shortlist_hits": 0,
+      "reveals": 1.98,
+      "decision_calls": 0.85,
+      "failed_call_share": 0.4351,
+      "all_decided": 0.0,
+      "stops": {
+        "no tool call": 80,
+        "turn cut off": 20
+      },
+      "completion_tokens_median": 512.0,
+      "at_minute": 17.3
+    },
+    "sft": {
+      "status": "done",
+      "episodes": 1000,
+      "demo_seeds": [
+        10000,
+        10999
+      ],
+      "demo_mean_score": 0.999,
+      "ranking": false,
+      "tokens": [
+        6344,
+        6643
+      ],
+      "epochs": 2.0,
+      "learning_rate": 1e-05,
+      "optim": "adafactor",
+      "precision": "fp16",
+      "steps": 250,
+      "minutes": 133.47,
+      "at_minute": 153.2
+    },
+    "sft_eval": {
+      "status": "done",
+      "model": "/kaggle/working/grpo/plain/sft/model",
+      "task": "easy",
+      "seeds": [
+        0,
+        96
+      ],
+      "minutes": 120.76,
+      "episodes": 97,
+      "mean_score": 0.2665,
+      "pass_rate": 0.0515,
+      "success_rate": 0.0,
+      "correct_labels": 3.4536,
+      "decided": 10,
+      "shortlist_hits": 0.8763,
+      "reveals": 50,
+      "decision_calls": 10,
+      "failed_call_share": 0.0,
+      "all_decided": 1.0,
+      "stops": {
+        "no tool call": 97
+      },
+      "completion_tokens_median": 5265,
+      "at_minute": 274.0
+    },
+    "grpo": {
+      "status": "skipped",
+      "minutes_available": 164.1,
+      "at_minute": 274.0
+    }
+  }
+}

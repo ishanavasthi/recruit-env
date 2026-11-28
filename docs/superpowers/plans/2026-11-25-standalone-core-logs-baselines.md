@@ -18,7 +18,7 @@ Each task ends with the full suite passing, and the pinned generator hashes and 
 | 10 | Validate: `openenv validate --level static` and `--url`; wheel in a fresh venv; Docker image | — | commands recorded in the PR | done: static WARN/exit 0, `--url` PASS, wheel, Docker |
 | 11 | Docs: README, CHANGELOG 4.0.0, `.plans/`, roadmap status | — | — | done `8dc6a34` |
 | 12 | Review round (delegate), then fixes | — | — | done: round 1 fixes in `0aa4bc3` |
-| 13 | Model and policy runs, then `docs/results/baselines.md` | `docs/results/` | each committed log replays | in progress |
-| 14 | PR, CI, merge, redeploy the Space, verify it live | — | — | pending |
+| 13 | Model and policy runs, then `docs/results/baselines.md` | `docs/results/` | each committed log replays | done `99db106`, `dbad42d` |
+| 14 | PR, CI, merge, redeploy the Space, verify it live | — | — | done: PR #15 merged as `2bd9e4a`; Space commit `f15a1ca` verified live |
 
 The pilot (2026-11-25) found that a 512-token cap lets the models spend the whole budget on reasoning and return no text (`finish_reason="length"`). That is what task 7's `max_tokens` fix addresses.

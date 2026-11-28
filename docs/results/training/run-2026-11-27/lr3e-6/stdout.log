@@ -1,0 +1,135 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/290 [00:00<?, ?it/s]Loading weights:   0%|          | 1/290 [00:00<02:50,  1.69it/s]Loading weights:  67%|██████▋   | 195/290 [00:00<00:00, 375.26it/s]Loading weights: 100%|██████████| 290/290 [00:00<00:00, 330.27it/s]
+  0%|          | 0/1000 [00:00<?, ?it/s]  0%|          | 1/1000 [01:15<20:52:54, 75.25s/it][curve] step 1 reward 0.0163 std 0.0432 reveals 2.6 decisions 0.2 gpu 7.38GB minutes 1.52
+                                                     0%|          | 1/1000 [01:15<20:52:54, 75.25s/it]  0%|          | 2/1000 [05:51<53:33:38, 193.20s/it]{'loss': '-0.1015', 'grad_norm': '8.539', 'learning_rate': '3e-06', 'num_tokens': '1.18e+04', 'completions/mean_length': '270.2', 'completions/min_length': '160', 'completions/max_length': '526', 'completions/clipped_ratio': '0', 'completions/mean_terminated_length': '270.2', 'completions/min_terminated_length': '160', 'completions/max_terminated_length': '526', 'tools/call_frequency': '3.625', 'tools/failure_frequency': '0.2069', 'rewards/RecruitToolEnv/mean': '0.01626', 'rewards/RecruitToolEnv/std': '0.04316', 'reward': '0.01626', 'reward_std': '0.04316', 'frac_reward_zero_std': '0', 'entropy': '0.9293', 'clip_ratio/low_mean': '0', 'clip_ratio/high_mean': '0', 'clip_ratio/region_mean': '0', 'clip_ratio/low_min': '0', 'clip_ratio/high_max': '0', 'step_time': '72.53', 'epoch': '0.001'}
+[curve] step 2 reward 0.0852 std 0.1267 reveals 1.9 decisions 1.4 gpu 11.52GB minutes 6.11
+                                                      0%|          | 2/1000 [05:51<53:33:38, 193.20s/it]  0%|          | 3/1000 [10:50<66:57:45, 241.79s/it]{'loss': '0.2038', 'grad_norm': '1.944', 'learning_rate': '2.997e-06', 'num_tokens': '3.074e+04', 'completions/mean_length': '1160', 'completions/min_length': '219', 'completions/max_length': '2560', 'completions/clipped_ratio': '0.125', 'completions/mean_terminated_length': '960', 'completions/min_terminated_length': '219', 'completions/max_terminated_length': '2092', 'tools/call_frequency': '11.75', 'tools/failure_frequency': '0.7234', 'rewards/RecruitToolEnv/mean': '0.08524', 'rewards/RecruitToolEnv/std': '0.1267', 'reward': '0.08524', 'reward_std': '0.1267', 'frac_reward_zero_std': '0', 'entropy': '0.4824', 'clip_ratio/low_mean': '0', 'clip_ratio/high_mean': '0', 'clip_ratio/region_mean': '0', 'clip_ratio/low_min': '0', 'clip_ratio/high_max': '0', 'step_time': '264.4', 'epoch': '0.002'}
+[curve] step 3 reward 0.0010 std 0.0000 reveals 3.1 decisions 0.9 gpu 11.52GB minutes 11.11
+                                                      0%|          | 3/1000 [10:50<66:57:45, 241.79s/it]  0%|          | 4/1000 [16:24<76:56:21, 278.09s/it]{'loss': '0', 'grad_norm': '0', 'learning_rate': '2.994e-06', 'num_tokens': '4.972e+04', 'completions/mean_length': '1155', 'completions/min_length': '335', 'completions/max_length': '2139', 'completions/clipped_ratio': '0', 'completions/mean_terminated_length': '1155', 'completions/min_terminated_length': '335', 'completions/max_terminated_length': '2139', 'tools/call_frequency': '7.5', 'tools/failure_frequency': '0.4667', 'rewards/RecruitToolEnv/mean': '0.001', 'rewards/RecruitToolEnv/std': '0', 'reward': '0.001', 'reward_std': '0', 'frac_reward_zero_std': '1', 'entropy': '0.5564', 'clip_ratio/low_mean': '0', 'clip_ratio/high_mean': '0', 'clip_ratio/region_mean': '0', 'clip_ratio/low_min': '0', 'clip_ratio/high_max': '0', 'step_time': '290.8', 'epoch': '0.003'}
+[curve] step 4 reward 0.0390 std 0.0453 reveals 4.8 decisions 1.9 gpu 11.52GB minutes 16.67
+                                                      0%|          | 4/1000 [16:24<76:56:21, 278.09s/it]  0%|          | 5/1000 [20:50<75:43:00, 273.95s/it]{'loss': '0.0002483', 'grad_norm': '2.837', 'learning_rate': '2.991e-06', 'num_tokens': '6.764e+04', 'completions/mean_length': '1030', 'completions/min_length': '330', 'completions/max_length': '1893', 'completions/clipped_ratio': '0.125', 'completions/mean_terminated_length': '906.9', 'completions/min_terminated_length': '330', 'completions/max_terminated_length': '1587', 'tools/call_frequency': '13.88', 'tools/failure_frequency': '0.5225', 'rewards/RecruitToolEnv/mean': '0.03896', 'rewards/RecruitToolEnv/std': '0.04531', 'reward': '0.03896', 'reward_std': '0.04531', 'frac_reward_zero_std': '0', 'entropy': '0.8063', 'clip_ratio/low_mean': '0', 'clip_ratio/high_mean': '0', 'clip_ratio/region_mean': '0', 'clip_ratio/low_min': '0', 'clip_ratio/high_max': '0', 'step_time': '322', 'epoch': '0.004'}
+[curve] step 5 reward 0.0237 std 0.0313 reveals 1.8 decisions 0.4 gpu 11.52GB minutes 21.11
+                                                      0%|          | 5/1000 [20:51<75:43:00, 273.95s/it]  1%|          | 6/1000 [29:16<97:25:31, 352.85s/it]{'loss': '0.04187', 'grad_norm': '3.648', 'learning_rate': '2.988e-06', 'num_tokens': '8.392e+04', 'completions/mean_length': '832.2', 'completions/min_length': '133', 'completions/max_length': '2560', 'completions/clipped_ratio': '0.125', 'completions/mean_terminated_length': '585.4', 'completions/min_terminated_length': '133', 'completions/max_terminated_length': '807', 'tools/call_frequency': '4.75', 'tools/failure_frequency': '0.5526', 'rewards/RecruitToolEnv/mean': '0.0237', 'rewards/RecruitToolEnv/std': '0.03133', 'reward': '0.0237', 'reward_std': '0.03133', 'frac_reward_zero_std': '0', 'entropy': '1.123', 'clip_ratio/low_mean': '0', 'clip_ratio/high_mean': '0', 'clip_ratio/region_mean': '0', 'clip_ratio/low_min': '0', 'clip_ratio/high_max': '0', 'step_time': '255.3', 'epoch': '0.005'}
+[curve] step 6 reward 0.0163 std 0.0432 reveals 0.9 decisions 0.2 gpu 11.52GB minutes 29.54
+                                                      1%|          | 6/1000 [29:17<97:25:31, 352.85s/it]  1%|          | 7/1000 [33:54<90:33:43, 328.32s/it]{'loss': '-0.1452', 'grad_norm': '2.385', 'learning_rate': '2.985e-06', 'num_tokens': '1.075e+05', 'completions/mean_length': '1738', 'completions/min_length': '479', 'completions/max_length': '2560', 'completions/clipped_ratio': '0.5', 'completions/mean_terminated_length': '943.5', 'completions/min_terminated_length': '479', 'completions/max_terminated_length': '1936', 'tools/call_frequency': '1.25', 'tools/failure_frequency': '0.1', 'rewards/RecruitToolEnv/mean': '0.01626', 'rewards/RecruitToolEnv/std': '0.04316', 'reward': '0.01626', 'reward_std': '0.04316', 'frac_reward_zero_std': '0', 'entropy': '0.5056', 'clip_ratio/low_mean': '0', 'clip_ratio/high_mean': '0', 'clip_ratio/region_mean': '0', 'clip_ratio/low_min': '0', 'clip_ratio/high_max': '0', 'step_time': '494.5', 'epoch': '0.006'}
+[curve] step 7 reward 0.0163 std 0.0432 reveals 1.0 decisions 0.1 gpu 11.53GB minutes 34.17
+                                                      1%|          | 7/1000 [33:54<90:33:43, 328.32s/it]  1%|          | 8/1000 [38:12<84:15:49, 305.80s/it]{'loss': '-0.0691', 'grad_norm': '0.8428', 'learning_rate': '2.982e-06', 'num_tokens': '1.342e+05', 'completions/mean_length': '2117', 'completions/min_length': '931', 'completions/max_length': '2560', 'completions/clipped_ratio': '0.375', 'completions/mean_terminated_length': '1852', 'completions/min_terminated_length': '931', 'completions/max_terminated_length': '2532', 'tools/call_frequency': '1.375', 'tools/failure_frequency': '0.1818', 'rewards/RecruitToolEnv/mean': '0.01626', 'rewards/RecruitToolEnv/std': '0.04316', 'reward': '0.01626', 'reward_std': '0.04316', 'frac_reward_zero_std': '0', 'entropy': '0.5649', 'clip_ratio/low_mean': '0', 'clip_ratio/high_mean': '0', 'clip_ratio/region_mean': '0', 'clip_ratio/low_min': '0', 'clip_ratio/high_max': '0', 'step_time': '266.5', 'epoch': '0.007'}
+[curve] step 8 reward 0.0161 std 0.0280 reveals 0.8 decisions 0.2 gpu 11.53GB minutes 38.47
+                                                      1%|          | 8/1000 [38:12<84:15:49, 305.80s/it]{'loss': '-0.08238', 'grad_norm': '0.8707', 'learning_rate': '2.979e-06', 'num_tokens': '1.616e+05', 'completions/mean_length': '2220', 'completions/min_length': '1060', 'completions/max_length': '2560', 'completions/clipped_ratio': '0.75', 'completions/mean_terminated_length': '1200', 'completions/min_terminated_length': '1060', 'completions/max_terminated_length': '1341', 'tools/call_frequency': '1.25', 'tools/failure_frequency': '0.2', 'rewards/RecruitToolEnv/mean': '0.01613', 'rewards/RecruitToolEnv/std': '0.02802', 'reward': '0.01613', 'reward_std': '0.02802', 'frac_reward_zero_std': '0', 'entropy': '0.3808', 'clip_ratio/low_mean': '0', 'clip_ratio/high_mean': '0', 'clip_ratio/region_mean': '0', 'clip_ratio/low_min': '0', 'clip_ratio/high_max': '0', 'step_time': '245.5', 'epoch': '0.008'}
+Traceback (most recent call last):
+  File "/kaggle/working/train_grpo.py", line 272, in <module>
+    main()
+    ~~~~^^
+  File "/kaggle/working/train_grpo.py", line 263, in main
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/dist-packages/transformers/trainer.py", line 1559, in train
+    return inner_training_loop(
+        args=args,
+    ...<2 lines>...
+        ignore_keys_for_eval=ignore_keys_for_eval,
+    )
+  File "/usr/local/lib/python3.13/dist-packages/transformers/trainer.py", line 1643, in _inner_training_loop
+    self._run_epoch(
+    ~~~~~~~~~~~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<9 lines>...
+        steps_trained_in_current_epoch=steps_trained_in_current_epoch,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/dist-packages/transformers/trainer.py", line 1889, in _run_epoch
+    tr_loss_step = self.training_step(model, inputs, num_items_in_batch)
+  File "/usr/local/lib/python3.13/dist-packages/trl/trainer/grpo_trainer.py", line 1628, in training_step
+    output = super().training_step(model, inputs, num_items_in_batch)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/trainer.py", line 2062, in training_step
+    loss = self.compute_loss(model, inputs, num_items_in_batch=num_items_in_batch)
+  File "/usr/local/lib/python3.13/dist-packages/trl/extras/profiling.py", line 211, in wrapper
+    return func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/trl/trainer/grpo_trainer.py", line 3115, in compute_loss
+    return self._compute_loss(model, inputs)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/trl/trainer/grpo_trainer.py", line 3203, in _compute_loss
+    per_token_logps, entropies, aux_loss = self._get_per_token_logps_and_entropies(
+                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        model,
+        ^^^^^^
+    ...<15 lines>...
+        sampling_mask=inputs.get("sampling_mask"),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/dist-packages/trl/extras/profiling.py", line 211, in wrapper
+    return func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/trl/trainer/grpo_trainer.py", line 1614, in _get_per_token_logps_and_entropies
+    outputs = model(**model_inputs, labels=labels, fused_lm_head=True)
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/trl/trainer/utils.py", line 1675, in _fused_forward
+    backbone_outputs = getattr(self, backbone_attr)(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/utils/generic.py", line 1081, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/utils/output_capturing.py", line 287, in wrapper
+    outputs = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/models/qwen2/modeling_qwen2.py", line 380, in forward
+    hidden_states = decoder_layer(
+        hidden_states,
+    ...<5 lines>...
+        **kwargs,
+    )
+  File "/usr/local/lib/python3.13/dist-packages/transformers/modeling_layers.py", line 110, in __call__
+    return self._gradient_checkpointing_func(partial(super().__call__, **kwargs), *args)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/_compile.py", line 54, in inner
+    return disable_fn(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/torch/_dynamo/eval_frame.py", line 1263, in _fn
+    return fn(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/torch/utils/checkpoint.py", line 512, in checkpoint
+    ret = function(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/models/qwen2/modeling_qwen2.py", line 274, in forward
+    hidden_states, _ = self.self_attn(
+                       ~~~~~~~~~~~~~~^
+        hidden_states=hidden_states,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+        **kwargs,
+        ^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/transformers/models/qwen2/modeling_qwen2.py", line 212, in forward
+    attn_output, attn_weights = attention_interface(
+                                ~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<7 lines>...
+        **kwargs,
+        ^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/dist-packages/transformers/integrations/sdpa_attention.py", line 170, in sdpa_attention_forward
+    attn_output = torch.nn.functional.scaled_dot_product_attention(
+        query,
+    ...<6 lines>...
+        **sdpa_kwargs,
+    )
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.97 GiB. GPU 0 has a total capacity of 14.56 GiB of which 2.95 GiB is free. Including non-PyTorch memory, this process has 11.61 GiB memory in use. Of the allocated memory 10.73 GiB is allocated by PyTorch, and 755.27 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+  1%|          | 8/1000 [45:40<94:24:41, 342.62s/it]

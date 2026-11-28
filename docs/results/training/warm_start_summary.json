@@ -1,0 +1,252 @@
+{
+  "task": "easy",
+  "reference_seeds": [
+    0,
+    99
+  ],
+  "references": {
+    "idle": {
+      "mean": 0.001,
+      "pass_rate": 0.0
+    },
+    "shortlist everyone": {
+      "mean": 0.3692,
+      "pass_rate": 0.0
+    },
+    "hold everyone": {
+      "mean": 0.2462,
+      "pass_rate": 0.0
+    },
+    "reject everyone": {
+      "mean": 0.1846,
+      "pass_rate": 0.0
+    },
+    "blind quota fill": {
+      "mean": 0.2634,
+      "pass_rate": 0.04
+    },
+    "random labels": {
+      "mean": 0.2745,
+      "pass_rate": 0.0
+    },
+    "rubric heuristic": {
+      "mean": 0.999,
+      "pass_rate": 1.0
+    },
+    "oracle": {
+      "mean": 0.999,
+      "pass_rate": 1.0
+    }
+  },
+  "arms": [
+    {
+      "arm": "plain",
+      "ranking": false,
+      "stages": {
+        "base_eval": "done",
+        "sft": "done",
+        "sft_eval": "done",
+        "grpo": "skipped"
+      },
+      "sft_loss_first_last": [
+        0.07109533995389938,
+        0.005092704202979803
+      ],
+      "sft_peak_gpu_gb": 5.44,
+      "evals": {
+        "eval_base": {
+          "label": "instruct model",
+          "model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "task": "easy",
+          "seeds": [
+            0,
+            99
+          ],
+          "minutes": 16.64,
+          "episodes": 100,
+          "mean_score": 0.0192,
+          "pass_rate": 0.0,
+          "success_rate": 0.0,
+          "correct_labels": 0.3,
+          "decided": 0.85,
+          "shortlist_hits": 0,
+          "reveals": 1.98,
+          "decision_calls": 0.85,
+          "failed_call_share": 0.4351,
+          "all_decided": 0.0,
+          "stops": {
+            "no tool call": 80,
+            "turn cut off": 20
+          },
+          "completion_tokens_median": 512.0,
+          "score_ci95": [
+            0.0137,
+            0.0246
+          ],
+          "minus_blind": {
+            "diff": -0.35,
+            "ci95": [
+              -0.3555,
+              -0.3446
+            ]
+          }
+        },
+        "eval_sft": {
+          "label": "after SFT",
+          "model": "/kaggle/working/grpo/plain/sft/model",
+          "task": "easy",
+          "seeds": [
+            0,
+            96
+          ],
+          "minutes": 120.76,
+          "episodes": 97,
+          "mean_score": 0.2665,
+          "pass_rate": 0.0515,
+          "success_rate": 0.0,
+          "correct_labels": 3.4536,
+          "decided": 10,
+          "shortlist_hits": 0.8763,
+          "reveals": 50,
+          "decision_calls": 10,
+          "failed_call_share": 0.0,
+          "all_decided": 1.0,
+          "stops": {
+            "no tool call": 97
+          },
+          "completion_tokens_median": 5265,
+          "score_ci95": [
+            0.2411,
+            0.2925
+          ],
+          "minus_blind": {
+            "diff": -0.1027,
+            "ci95": [
+              -0.1281,
+              -0.0767
+            ]
+          }
+        }
+      },
+      "sft_minus_base": {
+        "seeds": 97,
+        "diff": 0.2467,
+        "ci95": [
+          0.2201,
+          0.2734
+        ],
+        "excludes_zero": true
+      }
+    },
+    {
+      "arm": "ranking",
+      "ranking": true,
+      "stages": {
+        "sft": "done",
+        "sft_eval": "done",
+        "grpo": "skipped"
+      },
+      "sft_loss_first_last": [
+        0.12962763011455536,
+        0.02055111713707447
+      ],
+      "sft_peak_gpu_gb": 5.47,
+      "evals": {
+        "eval_base": {
+          "label": "instruct model",
+          "model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "task": "easy",
+          "seeds": [
+            0,
+            99
+          ],
+          "minutes": 16.64,
+          "episodes": 100,
+          "mean_score": 0.0192,
+          "pass_rate": 0.0,
+          "success_rate": 0.0,
+          "correct_labels": 0.3,
+          "decided": 0.85,
+          "shortlist_hits": 0,
+          "reveals": 1.98,
+          "decision_calls": 0.85,
+          "failed_call_share": 0.4351,
+          "all_decided": 0.0,
+          "stops": {
+            "no tool call": 80,
+            "turn cut off": 20
+          },
+          "completion_tokens_median": 512.0,
+          "score_ci95": [
+            0.0137,
+            0.0246
+          ],
+          "minus_blind": {
+            "diff": -0.35,
+            "ci95": [
+              -0.3555,
+              -0.3446
+            ]
+          }
+        },
+        "eval_sft": {
+          "label": "after SFT",
+          "model": "/kaggle/working/grpo/ranking/sft/model",
+          "task": "easy",
+          "seeds": [
+            0,
+            91
+          ],
+          "minutes": 120.81,
+          "episodes": 92,
+          "mean_score": 0.2687,
+          "pass_rate": 0.0652,
+          "success_rate": 0.0326,
+          "correct_labels": 3.2609,
+          "decided": 10,
+          "shortlist_hits": 1,
+          "reveals": 50,
+          "decision_calls": 10,
+          "failed_call_share": 0.0,
+          "all_decided": 1.0,
+          "stops": {
+            "no tool call": 92
+          },
+          "completion_tokens_median": 5382.5,
+          "score_ci95": [
+            0.2376,
+            0.3012
+          ],
+          "minus_blind": {
+            "diff": -0.1005,
+            "ci95": [
+              -0.1316,
+              -0.068
+            ]
+          }
+        }
+      },
+      "sft_minus_base": {
+        "seeds": 92,
+        "diff": 0.248,
+        "ci95": [
+          0.2155,
+          0.2818
+        ],
+        "excludes_zero": true
+      }
+    }
+  ],
+  "between_arms": {
+    "eval_sft": {
+      "difference": "ranking minus plain",
+      "seeds": 92,
+      "diff": 0.0032,
+      "ci95": [
+        -0.0395,
+        0.0463
+      ],
+      "excludes_zero": false
+    }
+  }
+}

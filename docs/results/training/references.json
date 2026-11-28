@@ -1,0 +1,41 @@
+{
+  "task": "easy",
+  "seeds": [
+    10000,
+    10999
+  ],
+  "references": {
+    "idle": {
+      "mean": 0.001,
+      "pass_rate": 0.0
+    },
+    "shortlist everyone": {
+      "mean": 0.3692,
+      "pass_rate": 0.0
+    },
+    "hold everyone": {
+      "mean": 0.2462,
+      "pass_rate": 0.0
+    },
+    "reject everyone": {
+      "mean": 0.1846,
+      "pass_rate": 0.0
+    },
+    "blind quota fill": {
+      "mean": 0.2673,
+      "pass_rate": 0.034
+    },
+    "random labels": {
+      "mean": 0.2691,
+      "pass_rate": 0.022
+    },
+    "rubric heuristic": {
+      "mean": 0.999,
+      "pass_rate": 1.0
+    },
+    "oracle": {
+      "mean": 0.999,
+      "pass_rate": 1.0
+    }
+  }
+}

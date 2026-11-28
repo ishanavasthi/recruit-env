@@ -10,10 +10,11 @@
 | 3 | Fairness audit: names table, twins, name-swap replays, metrics with CIs | Done (3.0.0) | PR #14 |
 | — | Verifier checks and gates (#7) | Done (3.0.0) | PR #14 |
 | — | Hugging Face Space redeployed to 3.0.0 | Done 2026-11-25 | Space commit `3e29bbe` |
-| 4 | Standalone core, OpenEnv adapter, concurrency (#11) | Done (4.0.0) | PR C |
-| — | JSONL transition logs and replay (#8) | Done (4.0.0) | PR C |
-| 5 | Baseline table and training example (#12) | Mostly done (4.0.0). The baseline table covers 10 seeds (goal 50+, in PR D). The GPU reward curve awaits the owner's choice of Colab or HF Jobs | PR C |
-| 6 | Public face: README, results page, report, demo, PyPI | Not started | PR D |
+| — | Hugging Face Space redeployed to 4.0.0 | Done 2026-11-25 | Space commit `f15a1ca` |
+| 4 | Standalone core, OpenEnv adapter, concurrency (#11) | Done (4.0.0) | PR #15 |
+| — | JSONL transition logs and replay (#8) | Done (4.0.0) | PR #15 |
+| 5 | Baseline table and training example (#12) | Mostly done. The baseline table covers 10 seeds (goal 50+, still open). First reward curve done on Kaggle (2026-11-27): reward rises to near the blind-labelling line, not past it. SFT warm-up (2026-11-28): reads everything on held-out seeds, labels at chance | PR #15; PR #16 |
+| 6 | Public face: README, results page, report, demo, PyPI | Not started | later |
 | 7 | Extensions (#2 ranking, #3 reasons, per-action costs, …) | Not started | later |
 
 ## What exists (4.0.0)
@@ -34,10 +35,13 @@
   - `scripts/run_benchmark.py` and `baselines_report.py` write `docs/results/baselines.md`;
   - `scripts/fairness_report.py`, `probe_scoring.py` and `difficulty_sweep.py`;
   - `scripts/replay.py`.
-- **Training:** `examples/train_grpo.py`, not yet run, because it needs a GPU.
+- **Training:**
+  - `examples/train_grpo.py` (GRPO with TRL) and `examples/warm_start.py` (SFT on reading demonstrations, held-out evaluation with TRL's rollout code, optional GRPO), run on Kaggle through `scripts/kaggle_train.py`;
+  - `scripts/training_references.py`, `training_report.py` and `warm_start_report.py` produce `docs/results/training.md`.
 
 ## Integrations
 
-- **Hugging Face Space:** `heyavasthi/recruitenv`, a Docker Space on port 7860, running 3.0.0.
+- **Hugging Face Space:** `heyavasthi/recruitenv`, a Docker Space on port 7860, running 4.0.0 (redeployed 2026-11-25, Space commit `f15a1ca`).
 - **Model access for evaluation:** an OpenAI-compatible proxy on the development server. Claude Sonnet 5.5 and Haiku 5.5 have been run.
+- **Kaggle:** free T4 notebooks for training, driven by the Kaggle CLI from the development server. Notebooks are private, and no credentials go into them.
 - **OpenEnv 0.14:** `openenv validate --url` passes every check, and static validation passes the manifest check.
